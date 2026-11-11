@@ -103,6 +103,11 @@ jobs:
             adb logcat -d -b crash > crash3.txt || true
             echo "===== crash (인터넷 끔) ====="; cat crash3.txt
             if grep -q "FATAL EXCEPTION" crash3.txt; then exit 1; fi
+            adb logcat -d | grep -iE "wordquest|Killing|has died|ANR in|depends on" | grep -vE "chromium|cr_" | tail -30 || true
+            # 가상 폰의 구글 서비스(읽어주기 음성 엔진 포함)가 멈추면 우리 앱도 같이 정리된다(앱 오류 아님, 업무 기록과 같음). 그때는 한 번 다시 켜 본다.
+            adb shell pidof app.wordquest || { adb logcat -d | grep -qiE "wordquest.*(depends on provider|due to)|Killing.*wordquest" && echo "가상 폰 서비스 문제로 정리됨, 다시 켜 봄" && adb shell am start -W -n app.wordquest/.MainActivity && sleep 12; } || true
+            adb logcat -d -b crash > crash4.txt || true
+            if grep -q "FATAL EXCEPTION" crash4.txt; then cat crash4.txt; exit 1; fi
             adb shell pidof app.wordquest || { echo "인터넷 끄니 앱이 꺼져 있어요"; exit 1; }
             adb exec-out screencap -p > shot-offline.png || true
             echo "인터넷 꺼도 앱이 켜져 있어요"
