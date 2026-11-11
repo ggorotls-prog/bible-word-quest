@@ -149,7 +149,8 @@ public class MainActivity extends Activity {
                 + "try{r.ttsNative=String(speechSynthesis.speak).indexOf('NativeTTS')>=0}catch(e){r.ttsErr=String(e)}"
                 + "try{var A=window.AudioContext||window.webkitAudioContext;var a=new A();r.audio=a.state;var o=a.createOscillator();o.connect(a.destination);o.start();o.stop(a.currentTime+.05)}catch(e){r.audioErr=String(e)}"
                 + "try{r.saved=localStorage.getItem('wq_selftest');localStorage.setItem('wq_selftest','kept')}catch(e){r.lsErr=String(e)}"
-                + "r.home=!!document.getElementById('toShop');"
+                + "r.home=!!(document.getElementById('toShop')||document.querySelector('.pinpad'));"
+                + "r.pin=!!document.querySelector('.pinpad');"
                 + "try{r.vis=localStorage.getItem('wq_vis');localStorage.setItem('wq_vis','');document.addEventListener('visibilitychange',function(){localStorage.setItem('wq_vis',(localStorage.getItem('wq_vis')||'')+document.visibilityState+'-')})}catch(e){}"
                 + "try{speechSynthesis.speak(new SpeechSynthesisUtterance('말씀 낱말 탐험대'))}catch(e){r.speakErr=String(e)}"
                 + "return JSON.stringify(r)})()";
@@ -211,8 +212,11 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (!loaded) { super.onBackPressed(); return; }
+        // 비밀번호 화면·시간이 끝나 잠긴 화면에서는 뒤로 가기로 풀리지 않게 앱을 닫는다
         web.evaluateJavascript("(function(){try{if(window.appBack)return !!appBack();"
+                + "if(document.querySelector('.pinpad'))return false;"
                 + "var b=document.getElementById('backBtn');if(b){b.click();return true}"
+                + "if(typeof gated!=='undefined'&&gated)return false;"
                 + "if(document.getElementById('toShop'))return false;"
                 + "if(typeof home==='function'){home();return true}}catch(e){}return false})()", v -> {
             if (!"true".equals(v)) finish();

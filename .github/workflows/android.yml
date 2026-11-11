@@ -89,7 +89,11 @@ jobs:
             echo "===== 2번째 켬 ====="; cat t2.txt
             grep -q 'saved.\{0,6\}kept' t2.txt || { echo "앱을 다시 켜니 기록이 없어졌어요"; exit 1; }
             echo "읽어주기·소리·기록 모두 됨"
-            grep -q 'vis.\{0,6\}hidden' t2.txt && echo "홈으로 내리면 visibilitychange(hidden)가 와요" || echo "주의: 홈으로 내려도 visibilitychange가 안 왔어요(타이머는 멈추므로 시간은 안 줄어듦)"
+            # 비밀번호(1분 넘게 나갔다 오면 다시 묻기)가 visibilitychange에 달려 있어 꼭 와야 한다
+            grep -q 'vis.\{0,6\}hidden-visible' t2.txt || { echo "홈으로 내렸다 올려도 visibilitychange가 안 와요"; exit 1; }
+            echo "홈으로 내리면 hidden, 돌아오면 visible이 와요"
+            grep -q 'pin.\{0,6\}true' t2.txt || { echo "다시 켤 때 비밀번호 화면이 먼저 안 나와요"; exit 1; }
+            echo "다시 켜면 비밀번호 화면이 먼저 나와요"
             # 인터넷을 끄고 켜 봐도 꺼지지 않는지
             adb shell svc wifi disable; adb shell svc data disable; adb shell cmd connectivity airplane-mode enable || true
             adb shell am force-stop app.wordquest

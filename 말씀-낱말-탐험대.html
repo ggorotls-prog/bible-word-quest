@@ -54,7 +54,18 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .chgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px}
 .ch{font-family:var(--display);font-size:18px;padding:9px 0;border-radius:12px;background:#fff;border:2px solid var(--line)}
 .ch.pick{background:var(--gold);border-color:#b98a1c;color:#4a3200;animation:pop .3s}
-.ch.done{background:#DDF3E3;border-color:var(--ok);color:var(--ok)}
+.ch.past{background:#D9D6CF;border-color:#B5B0A6;color:#6E6A62}
+.ch.today{background:var(--sky);border-color:#2C548A;color:#fff}
+.ch[disabled]{cursor:default}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:13.5px;color:var(--soft)}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend i{display:inline-block;width:16px;height:16px;padding:0;border-radius:5px}
+.pindots{display:flex;gap:14px;justify-content:center}
+.pindots i{width:18px;height:18px;border-radius:50%;border:3px solid var(--olive);background:transparent}
+.pindots i.on{background:var(--olive)}
+.pinpad{display:grid;grid-template-columns:repeat(3,76px);gap:12px;justify-content:center}
+.pk{font-family:var(--display);font-size:30px;height:66px;border-radius:18px;background:var(--scroll);box-shadow:0 4px 0 var(--line)}
+.pk:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
 .bibbar{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;padding:10px;border-radius:20px;background:var(--sand);box-shadow:0 -4px 16px rgba(58,46,34,.12)}
 .modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mode{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:18px;background:var(--scroll);border:3px solid var(--line);text-align:center}
@@ -976,23 +987,26 @@ function bible(reason){
   const msg=reason==="timeup"?`${call()}, 게임 시간이 다 됐어! 성경을 읽고 체크하면 다시 할 수 있어.`
     :reason==="start"?`${call()}, 오늘 읽은 성경을 체크해 봐. 1장에 ${MIN_PER_CH}분씩 게임할 수 있어!`
     :`성경을 더 읽었으면 체크해 봐. 1장에 ${MIN_PER_CH}분이야.`;
-  const bookRow=([n,c])=>{const done=Array.from({length:c},(_,k)=>readCh[n+":"+(k+1)]).filter(Boolean).length;
-    return `<button class="bk ${bibBook===n?"open":""} ${done===c?"full":""}" data-b="${n}"><b>${n}</b><small>${done}/${c}장</small></button>`};
+  const td=today();
+  const bookRow=([n,c])=>{const vals=Array.from({length:c},(_,k)=>readCh[n+":"+(k+1)]);
+    const done=vals.filter(Boolean).length,todayN=vals.filter(v=>v===td).length;
+    return `<button class="bk ${bibBook===n?"open":""} ${done===c?"full":""}" data-b="${n}"><b>${n}</b><small>${done}/${c}장${todayN?` <span style="color:var(--sky)">· 오늘 ${todayN}</span>`:""}</small></button>`};
   let grid="";
   if(bibBook){const c=books.find(b=>b[0]===bibBook)[1];
     grid=`<div class="chgrid">${Array.from({length:c},(_,k)=>{const key=bibBook+":"+(k+1),d=readCh[key],p=pending.has(key);
-      return `<button class="ch ${d?"done":p?"pick":""}" data-k="${key}" ${d?"disabled":""}>${k+1}</button>`}).join("")}</div>`}
+      return `<button class="ch ${d?(d===td?"today":"past"):p?"pick":""}" data-k="${key}" ${d?"disabled":""}>${k+1}</button>`}).join("")}</div>
+      <div class="legend"><span><i class="ch past"></i>전에 읽음</span><span><i class="ch today"></i>오늘 읽음</span><span><i class="ch pick"></i>지금 고름</span><span><i class="ch"></i>안 읽음</span></div>`}
   app.innerHTML=`
   <div class="hud"><span class="purse">${COIN(24)}<span>${talents}</span></span><span class="clock ${timeLeft<=60?"low":""}">⏱ ${fmtTime(timeLeft)}</span><span class="sp"></span></div>
   <div class="scene"><span class="bob">${DAVID(66,wear)}</span><div class="bubble"><b class="who">다윗</b><br>${esc(msg)}</div></div>
   <h1 style="font-size:30px;color:var(--olive-dark)">말씀 체크표</h1>
-  <p style="color:var(--soft)">지금까지 읽은 장: <b>${readCount()}장</b> · 시편과 잠언은 빼고 체크해요</p>
+  <p style="color:var(--soft)">지금까지 읽은 장: <b>${readCount()}장</b> · 오늘 <b style="color:var(--sky)">${Object.values(readCh).filter(v=>v===td).length}장</b> · 시편과 잠언은 빼고 체크해요</p>
   <div class="modes">
     <button class="mode ${bibTab==="ot"?"on":""}" id="tabOt"><b>구약</b></button>
     <button class="mode ${bibTab==="nt"?"on":""}" id="tabNt"><b>신약</b></button>
   </div>
   ${bibBook?`<div class="card"><div class="qhead"><b style="font-family:var(--display);font-size:22px">${bibBook}</b><span class="sp"></span><button class="say" id="closeBk">닫기</button></div>
-    <p class="ask">읽은 장을 눌러 주세요. 초록색은 이미 읽은 장이에요.</p>${grid}</div>`:""}
+    <p class="ask">읽은 장을 눌러 주세요. 회색은 전에, 파란색은 오늘 읽은 장이에요.</p>${grid}</div>`:""}
   <div class="books">${books.map(bookRow).join("")}</div>
   <div class="bibbar">
     ${pending.size?`<button class="btn gold" id="confirm">다 읽었어요! ${pending.size}장 → 게임 ${pending.size*MIN_PER_CH}분</button>`:`<p style="color:var(--soft);text-align:center">읽은 장을 고르면 게임 시간이 생겨요</p>`}
@@ -1004,7 +1018,7 @@ function bible(reason){
   app.querySelectorAll(".bk").forEach(b=>b.onclick=()=>{bibBook=bibBook===b.dataset.b?null:b.dataset.b;sfx("tap");bible(reason)});
   app.querySelectorAll(".ch").forEach(b=>b.onclick=()=>{const k=b.dataset.k;pending.has(k)?pending.delete(k):pending.add(k);sfx("flip");bible(reason)});
   on("confirm",()=>{
-    const n=pending.size;pending.forEach(k=>readCh[k]=true);pending.clear();store.set("bible",readCh);
+    const n=pending.size;pending.forEach(k=>readCh[k]=today());pending.clear();store.set("bible",readCh);
     timeLeft+=n*MIN_PER_CH*60;saveTime();sfx("fanfare");confetti(120);
     toast(`말씀 ${n}장! 게임 ${n*MIN_PER_CH}분이 생겼어요`);speak(`잘했어! 말씀 ${n}장을 읽어서 게임 ${n*MIN_PER_CH}분이 생겼어.`);
     bible(reason);
@@ -1012,6 +1026,50 @@ function bible(reason){
   on("toGame",()=>{gated=false;bibBook=null;sfx("good");home()});
 }
 
+function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+
+/* ================= 앱 비밀번호 =================
+   처음 켤 때 부모님이 4자리를 정한다(값은 이 기기에만, 섞어서 저장).
+   앱을 켤 때와, 1분 넘게 나갔다가 돌아올 때 묻는다. */
+const pinHash=s=>{let h=5381;for(const ch of "mw-salt-"+s)h=((h<<5)+h+ch.charCodeAt(0))|0;return String(h>>>0)};
+let pinSaved=store.get("pin",""),hiddenAt=0;
+function lockScreen(stage="enter",first=""){
+  gated=true;stopTimer();hush();
+  let typed="";
+  const title=stage==="set"?"부모님 비밀번호 정하기":stage==="again"?"한 번 더 눌러 주세요":"비밀번호를 눌러 주세요";
+  const sub=stage==="set"?"앱을 켤 때마다 물어볼 숫자 4자리를 정해 주세요. 아이에게는 알려 주지 마세요.":stage==="again"?"방금 정한 4자리를 다시 눌러 주세요.":"부모님이 열어 주세요.";
+  app.innerHTML=`
+  <div class="result" style="gap:12px;padding-top:20px">
+    <div class="chars"><span class="bob">${DAVID(80,wear)}</span>${JONATHAN(66)}</div>
+    <h1 style="font-size:28px;color:var(--olive-dark)">${title}</h1>
+    <p style="color:var(--soft)">${sub}</p>
+    <div class="pindots" id="pd">${"<i></i>".repeat(4)}</div>
+    <p id="pinMsg" style="color:var(--no);min-height:1.4em"></p>
+    <div class="pinpad">${[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map(k=>k===""?"<span></span>":`<button class="pk" data-k="${k}">${k}</button>`).join("")}</div>
+  </div>`;
+  const draw=()=>document.querySelectorAll("#pd i").forEach((d,i)=>d.classList.toggle("on",i<typed.length));
+  app.querySelectorAll(".pk").forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k;sfx("tap");
+    if(k==="⌫"){typed=typed.slice(0,-1);draw();return}
+    if(typed.length>=4)return;typed+=k;draw();
+    if(typed.length<4)return;
+    setTimeout(()=>{
+      if(stage==="set")return lockScreen("again",typed);
+      if(stage==="again"){
+        if(typed!==first){sfx("bad");return lockScreen("set")}
+        pinSaved=pinHash(typed);store.set("pin",pinSaved);sfx("good");toast("비밀번호를 정했어요");return unlock();
+      }
+      if(pinHash(typed)===pinSaved){sfx("good");return unlock()}
+      sfx("bad");typed="";draw();document.getElementById("pinMsg").textContent="비밀번호가 달라요";
+    },150);
+  });
+}
+function unlock(){gated=false;if(timeLeft>0)home();else bible("start")}
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="hidden")hiddenAt=Date.now();
+  else if(hiddenAt&&pinSaved&&Date.now()-hiddenAt>60000){hiddenAt=0;lockScreen()}
+});
+
 try{speechSynthesis.getVoices()}catch(e){}
-if(timeLeft>0)home();else bible("start");
+pinSaved?lockScreen():lockScreen("set");
 </script>
