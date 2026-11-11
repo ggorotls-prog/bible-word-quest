@@ -1184,10 +1184,10 @@ function adminLogin(){
   box.querySelector("form").onsubmit=async e=>{
     e.preventDefault();const go=box.querySelector("#admGo");go.disabled=true;msg("확인하는 중…");
     try{
-      const r=await fetch(SB+"/rest/v1/rpc/rel_login",{method:"POST",headers:{apikey:SB_KEY,"Content-Type":"application/json"},
+      const r=await fetch(SB+"/rest/v1/rpc/wq_admin_login",{method:"POST",headers:{apikey:SB_KEY,"Content-Type":"application/json"},
         body:JSON.stringify({p_id:box.querySelector("#admId").value,p_pw:box.querySelector("#admPw").value})});
       const j=await r.json().catch(()=>({}));
-      if(r.ok&&j&&j.token){close();admin=true;gated=false;bibBook=null;sfx("good");toast("관리자로 들어왔어요");home();return}
+      if(r.ok&&j&&j.ok){close();admin=true;gated=false;bibBook=null;sfx("good");toast("관리자로 들어왔어요");home();return}
       msg((j&&j.error)||"아이디나 비밀번호가 맞지 않아요.");
     }catch(err){msg("인터넷 연결을 확인해 주세요.")}
     go.disabled=false;
