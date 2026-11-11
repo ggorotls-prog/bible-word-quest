@@ -43,6 +43,13 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .name-row{display:flex;gap:8px;width:100%;max-width:360px}
 .name-row input{flex:1;min-width:0;font:inherit;font-size:20px;padding:12px 14px;border-radius:14px;border:3px solid var(--line);background:var(--scroll);color:var(--ink)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mode{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:18px;background:var(--scroll);border:3px solid var(--line);text-align:center}
+.mode b{font-family:var(--display);font-weight:400;font-size:20px}
+.mode small{color:var(--soft);font-size:13.5px}
+.mode.on{border-color:var(--olive);background:#E7F0DC}
+.mode.chal.on{border-color:var(--fire);background:#FCE7D6}
+.mode[disabled]{opacity:.55;cursor:default}
 .row2 .btn{font-size:19px;padding:12px 10px;display:flex;align-items:center;justify-content:center;gap:6px}
 
 /* 단계 지도 */
@@ -472,9 +479,14 @@ const store={get(k,d){try{const v=localStorage.getItem("mw2_"+k);return v==null?
 let kid=store.get("kid",""),talents=store.get("talents",0),owned=store.get("owned",[]),wear=store.get("wear",[]);
 let stars=store.get("stars",{}),mastery=store.get("mastery",{}),openAll=store.get("openAll",false);
 let sfxOn=store.get("sfx",true),bgmOn=store.get("bgm",false),voiceOn=store.get("voice",true);
-const save=()=>{store.set("talents",talents);store.set("owned",owned);store.set("wear",wear);store.set("stars",stars);store.set("mastery",mastery)};
+const save=()=>{store.set("talents",talents);store.set("owned",owned);store.set("wear",wear);store.set("stars",stars);store.set("starsC",starsC);store.set("mastery",mastery)};
 function master(w,d){mastery[w]=Math.max(0,Math.min(3,(mastery[w]||0)+d));save()}
-const isOpen=i=>openAll||i===0||(stars[i-1]||0)>0;
+/* 연습 모드(기본): 하트·시간 없음, 힌트 공짜, 틀리면 뜻 알려 줌. 연습 10단계를 깨면 도전 모드가 열린다 */
+let mode=store.get("mode","practice"),starsC=store.get("starsC",{});
+const challengeOpen=()=>openAll||(stars[LEVELS.length-1]||0)>0;
+if(mode==="challenge"&&!challengeOpen())mode="practice";
+const S=()=>mode==="challenge"?starsC:stars;
+const isOpen=i=>openAll||i===0||(S()[i-1]||0)>0;
 
 /* ================= 소리 ================= */
 let ac=null;
@@ -556,7 +568,8 @@ function addTal(n,el){if(n<=0)return;talents+=n;save();const t=document.getEleme
 /* ================= 처음 화면 + 단계 지도 ================= */
 function home(){
   hush();
-  const next=LEVELS.findIndex((_,i)=>!(stars[i]>0));
+  const next=LEVELS.findIndex((_,i)=>!(S()[i]>0));
+  const cOpen=challengeOpen();
   const nx=ITEMS.find(i=>!owned.includes(i.id));
   app.innerHTML=`${hud()}
   <div class="hero">
@@ -573,16 +586,22 @@ function home(){
     <button class="btn ghost" id="toDict">외운 낱말 보기</button>
   </div>
   ${nx?`<p style="text-align:center;color:var(--soft)">다음 선물: ${esc(nx.name)} (달란트 ${nx.price}개)</p>`:""}
+  <div class="modes">
+    <button class="mode ${mode==="practice"?"on":""}" id="mPrac"><b>연습 모드</b><small>하트·시간 없이 끝까지</small></button>
+    <button class="mode chal ${mode==="challenge"?"on":""}" id="mChal" ${cOpen?"":"disabled"}><b>도전 모드${cOpen?"":" (잠김)"}</b><small>${cOpen?"하트·시간! 달란트 두 배":"연습 10단계를 깨면 열려요"}</small></button>
+  </div>
   <div class="map">${LEVELS.map((L,i)=>{const op=isOpen(i);
     return `<button class="lv ${L.hard?"hard":""} ${i===next&&op?"next":""}" data-i="${i}" ${op?"":"disabled"}>
       <span class="ln">${i+1}단계</span><b>${esc(L.t)}</b><small>${esc(L.sub)}</small>${dots(i)}
-      <span class="st">${op?starStr(stars[i]||0):"잠김"}</span></button>`}).join("")}</div>
+      <span class="st">${op?starStr(S()[i]||0):"잠김"}</span></button>`}).join("")}</div>
   <button class="dad" id="dad">${openAll?"아빠용: 단계 잠금 다시 켜기":"아빠용: 모든 단계 열기"}</button>`;
   stopTimer();bindHud();
   on("saveName",()=>{kid=document.getElementById("kidname").value.trim();store.set("kid",kid);sfx("good");home()});
   on("toShop",()=>{sfx("tap");shop()});
   on("toDict",()=>{sfx("tap");dict()});
-  on("dad",()=>{openAll=!openAll;store.set("openAll",openAll);sfx("tap");home()});
+  on("dad",()=>{openAll=!openAll;store.set("openAll",openAll);if(!challengeOpen())mode="practice";store.set("mode",mode);sfx("tap");home()});
+  on("mPrac",()=>{mode="practice";store.set("mode",mode);sfx("tap");home()});
+  on("mChal",()=>{if(!cOpen)return;mode="challenge";store.set("mode",mode);sfx("unlock");home()});
   app.querySelectorAll(".lv").forEach(b=>b.onclick=()=>{sfx("tap");startLevel(+b.dataset.i)});
 }
 
@@ -602,6 +621,8 @@ const DIFF=[
  {hearts:2,time:45,hint:0,     ch:4,mean:4,fix:.5, auto:false,info:false},
  {hearts:2,time:40,hint:0,     ch:4,mean:4,fix:.6, auto:false,info:false}
 ];
+const PRACTICE={hearts:0,time:0,hint:"free",auto:true,info:true};
+const getD=i=>mode==="challenge"?DIFF[i]:{...DIFF[i],...PRACTICE};
 const BL="(   )",isBlank=q=>q.s.includes(BL);
 const ul=s=>esc(s).replace(/\[\[(.+?)\]\]/g,'<u style="text-decoration-thickness:3px;text-decoration-color:var(--gold)">$1</u>');
 const plain=s=>s.replace(/\[\[|\]\]/g,"");
@@ -615,7 +636,7 @@ let play=null,tick=null;
 function stopTimer(){clearInterval(tick);tick=null}
 function startLevel(li,only){
   stopTimer();
-  const L=LEVELS[li],D=DIFF[li];
+  const L=LEVELS[li],D=getD(li);
   const items=(only||L.qs.map((_,i)=>i)).map(i=>({kind:"q",qi:i,fix:isBlank(L.qs[i])&&Math.random()<D.fix}));
   if(!only){
     const answers=shuffle([...new Set(L.qs.map(q=>q.w[q.a]))].filter(w=>!w.includes(":"))).slice(0,2);
@@ -626,13 +647,13 @@ function startLevel(li,only){
   if(!only)levelIntro();else step();
 }
 function levelIntro(){
-  const L=play.L,D=play.D,n=play.li+1,prev=n>1?DIFF[n-2]:null;
+  const L=play.L,D=play.D,n=play.li+1,prev=n>1?getD(n-2):null;
   const nw=k=>prev&&prev[k]!==D[k]?"new":"";
   const msg=n===1?`${call()}, 성경 이야기 속 빈칸에 꼭 맞는 낱말을 찾아 줘. 맞히면 그 낱말 뜻도 한 번 더 찾아야 해!`
     :`${n}단계야! 아래 규칙을 잘 봐. 빨간 글씨가 이번에 더 어려워진 거야.`;
   app.innerHTML=`${hud("단계 지도")}
   <div class="result" style="gap:10px">
-    <span class="ref" style="font-size:18px;padding:4px 14px">${n}단계</span>${dots(play.li)}
+    <span class="ref" style="font-size:18px;padding:4px 14px;${mode==="challenge"?"background:var(--fire)":""}">${mode==="challenge"?"도전":"연습"} ${n}단계</span>${dots(play.li)}
     <h1 style="font-size:30px;color:var(--olive-dark)">${esc(L.t)}</h1>
     <p style="color:var(--soft)">${esc(L.sub)}</p>
     <dl class="rules">
@@ -746,7 +767,7 @@ function pick(it,q,i,btn){
   btn.classList.add("ok");app.querySelectorAll("#ch .choice").forEach(b=>b.disabled=true);
   const bl=document.getElementById("blank");if(bl){bl.textContent=q.c[q.a];bl.classList.add("pop")}
   if(it.fix){bl.classList.remove("found");bl.style.borderColor="var(--ok)";bl.style.background="#DDF3E3"}
-  if(it.first){play.combo++;play.maxCombo=Math.max(play.maxCombo,play.combo);const g=(play.combo>=5?3:play.combo>=3?2:1)+(play.li>=6?1:0);play.earned+=g;setTimeout(()=>addTal(g,btn),200);
+  if(it.first){play.combo++;play.maxCombo=Math.max(play.maxCombo,play.combo);const g=((play.combo>=5?3:play.combo>=3?2:1)+(play.li>=6?1:0))*(mode==="challenge"?2:1);play.earned+=g;setTimeout(()=>addTal(g,btn),200);
     play.combo>=3?sfx("combo",play.combo):sfx("good");const r=btn.getBoundingClientRect();confetti(play.combo>=3?60:30,r.left+r.width/2,r.top)}
   else sfx("good");
   meanQuiz(it,q);
@@ -773,13 +794,15 @@ function meanQuiz(it,q){
       speak("아니야. 다시 골라 봐!");return}
     b.classList.add("ok");app.querySelectorAll("#mc .choice").forEach(x=>x.disabled=true);sfx("good");
     const perfect=it.first&&it.memFirst;
-    if(it.memFirst){master(w,1);play.earned+=1;addTal(1,b)}
+    const mg=(it.memFirst?2:1)*(mode==="challenge"?2:1);
+    if(it.memFirst)master(w,1);play.earned+=mg;addTal(mg,b);
     if(perfect)play.perfect++;else play.wrong.push(it.qi);
     const cheer=perfect?(play.combo>=3?`${play.combo}연속! 말씀 박사!`:["딩동댕! 낱말도 뜻도 정답!","우와, 뜻까지 알고 있네!","역시 "+nm()+"!"][Math.floor(Math.random()*3)]):"맞았어! 이제 확실히 알겠지?";
     const rows=it.keep.map(i=>`<div class="${i===q.a?"right":""}"><b style="${q.lab?"font-size:15px;font-family:var(--body)":""}">${esc(q.lab?q.c[i]:q.c[i])}</b><span>${esc(M(q.w[i]))}${i!==q.a&&isBlank(q)?`<span style="display:block;color:var(--no);font-size:14px">"${esc(q.s.replace(BL,q.c[i]))}" → 이상해요</span>`:""}</span></div>`).join("");
     const title=q.lab?"같은 낱말이라도 뜻이 달라요":q.ask===ASK_SYN?"뜻이 비슷한 말과 아닌 말":q.ask===ASK_ANT?"반대말과 아닌 말":"보기마다 뜻이 달라요";
     document.getElementById("mq").insertAdjacentHTML("afterend",`<div class="panel good">
       <h2>${esc(cheer)}</h2>
+      <span class="gain" style="display:flex;align-items:center;gap:4px">뜻 정답! ${COIN(20)} 달란트 +${mg}</span>
       <p><b>${esc(q.lab||NAME(w))}</b>: ${esc(M(w))}</p><p>예) ${esc(EX(w))}</p>
       <p>"${esc(filled(q))}" <span class="ref">${esc(q.ref)}</span></p>
       <p style="font-family:var(--display);color:var(--olive-dark)">${title}</p>
@@ -836,8 +859,11 @@ function levelResult(){
   stopTimer();
   const t=play.items.length,li=play.li;
   let st=0,bonus=0,best=false,unlocked=false;
-  if(!play.retry){st=starsFor(play.perfect,t);bonus=(st===3?5:st===2?3:1)+li;
-    const before=stars[li]||0;if(st>before){unlocked=before===0&&li+1<LEVELS.length;stars[li]=st;best=true;save()}}
+  let chalNew=false;
+  if(!play.retry){st=starsFor(play.perfect,t);bonus=((st===3?5:st===2?3:1)+li)*(mode==="challenge"?2:1);
+    const ST=S(),wasC=challengeOpen(),before=ST[li]||0;
+    if(st>before){unlocked=before===0&&li+1<LEVELS.length;ST[li]=st;best=true;save()}
+    chalNew=mode==="practice"&&!wasC&&challengeOpen();}
   else if(!play.wrong.length)bonus=2;
   const msg=play.retry?(play.wrong.length?"조금만 더! 뜻을 소리 내어 따라 말해 보자.":"헷갈렸던 낱말 뜻을 다 기억했어!")
     :li===LEVELS.length-1&&st>0?`${call()}, 10단계까지 다 깼어! 진짜 말씀 낱말 박사야!`
@@ -847,6 +873,7 @@ function levelResult(){
    ${play.retry?`<h1 style="font-size:30px;color:var(--olive-dark)">다시 도전 끝!</h1>`:`<span class="ref" style="font-size:17px">${li+1}단계 결과</span><div class="big-stars">${[0,1,2].map(k=>`<span class="${k<st?"":"off"}" style="animation-delay:${.3+k*.35}s">★</span>`).join("")}</div>`}
    ${best&&st?`<span class="combo pop">최고 기록!</span>`:""}
    ${unlocked?`<span class="combo pop" style="background:var(--sky)">${li+2}단계가 열렸어요! 더 어려워져요</span>`:""}
+   ${chalNew?`<div class="panel" style="background:#FCE7D6;text-align:center"><h2 style="color:var(--fire)">도전 모드가 열렸어요!</h2><p>연습 10단계를 모두 깼어요. 이제 하트와 시간이 있는 도전 모드에 도전해 보세요. 달란트를 두 배로 받아요!</p></div>`:""}
    <div class="tally"><span>낱말과 뜻 모두 한 번에</span><span>${play.perfect}/${t}</span>
      ${play.D.hearts?`<span>남은 하트</span><span>${play.hearts}/${play.D.hearts}</span>`:""}
      <span>최고 연속</span><span>${play.maxCombo}번</span><span>받은 달란트</span><span>${play.earned}개</span>
@@ -863,6 +890,7 @@ function levelResult(){
   if(!play.retry)for(let k=0;k<st;k++)setTimeout(()=>sfx("star",k),300+k*350);
   setTimeout(()=>{if(bonus){addTal(bonus,document.getElementById("totN"));document.getElementById("totN").textContent=talents+"개"}
     if(unlocked)setTimeout(()=>sfx("unlock"),400);
+    if(chalNew){setTimeout(()=>{sfx("fanfare");confetti(160)},900);speak("도전 모드가 열렸어! 하트와 시간이 있는 도전 모드에 도전해 봐!")}
     if(st===3||(play.retry&&!play.wrong.length)){sfx("fanfare");confetti(140)}},300+st*350);
   speak(msg+(unlocked?` ${li+2}단계가 열렸어! 더 어려워져!`:""));
   const wr=play.wrong.slice();
