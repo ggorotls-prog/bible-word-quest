@@ -752,7 +752,7 @@ function home(){
    hearts: 목숨(0=없음) · time: 문제당 초(0=없음) · hint: "free"/달란트 값/0(없음)
    ch: 문제 보기 수 상한 · mean: 뜻 찾기 보기 수 · fix: 틀린 낱말 고치기 문제 비율
    auto: 문제 자동 읽어주기 · info: 틀린 보기 뜻 알려주기 */
-const DIFF=LEVELS.map(()=>({hearts:3,time:45,hint:0,ch:4,mean:4,fix:.3,auto:false,info:false}));
+const DIFF=LEVELS.map(()=>({hearts:3,time:45,hint:2,ch:4,mean:4,fix:.3,auto:false,info:false}));
 const PRACTICE={hearts:0,time:0,hint:"free",auto:true,info:true};
 const getD=i=>mode==="challenge"?DIFF[i]:{...DIFF[i],...PRACTICE};
 const BL="(   )",isBlank=q=>q.s.includes(BL);
