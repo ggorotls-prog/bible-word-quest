@@ -1,0 +1,911 @@
+<title>말씀 낱말 탐험대</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+/* 레이아웃: 한 화면 게임. 위에 달란트·소리 막대, 단계 지도, 문제 카드 → 정답 → 뜻 익히기 카드 → 가리고 떠올리기 */
+:root{
+  --sand:#F6EBD3; --scroll:#FFF9EC; --olive:#5E7F3A; --olive-dark:#3F5A24; --sky:#3E6FA8;
+  --gold:#E8B53B; --ink:#3A2E22; --soft:#7A6A55; --line:#E3D2AE;
+  --ok:#3E9B5C; --no:#D9534A; --fire:#E8792E;
+  --display:"Jua","Gowun Dodum",system-ui,sans-serif;
+  --body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--sand);color:var(--ink);font-family:var(--body);font-size:17px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 28px;
+  background-image:radial-gradient(ellipse at 15% 105%,#EAD7AE 0 140px,transparent 141px),radial-gradient(ellipse at 90% 108%,#E5CF9F 0 180px,transparent 181px);
+  background-attachment:fixed}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{font-family:var(--display);font-weight:400;text-wrap:balance;margin:0}
+p{margin:0}
+button{font:inherit;cursor:pointer;border:0;color:inherit;background:none}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.btn{font-family:var(--display);font-size:22px;padding:14px 22px;border-radius:18px;background:var(--olive);color:#fff;box-shadow:0 5px 0 var(--olive-dark)}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--olive-dark)}
+.btn.ghost{background:var(--scroll);color:var(--olive-dark);box-shadow:0 5px 0 var(--line)}
+.btn.gold{background:var(--gold);color:#4a3200;box-shadow:0 5px 0 #b98a1c}
+.btn.sm{font-size:18px;padding:10px 16px}
+.hud{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.purse{display:flex;align-items:center;gap:6px;background:var(--scroll);border-radius:99px;padding:4px 12px 4px 5px;font-family:var(--display);font-size:19px;color:#8a5f00;box-shadow:0 3px 0 var(--line);font-variant-numeric:tabular-nums}
+.purse.bump{animation:pop .45s}
+.sp{flex:1}
+.ico{background:var(--scroll);border-radius:12px;padding:6px 9px;font-family:var(--display);font-size:14px;color:var(--olive-dark);box-shadow:0 3px 0 var(--line)}
+.ico.off{color:#b3a68f;text-decoration:line-through}
+
+.hero{text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+.hero h1{font-size:38px;color:var(--olive-dark)}
+.hero p{color:var(--soft);line-height:1.5}
+.chars{display:flex;gap:8px;justify-content:center;align-items:flex-end}
+.bob{display:inline-block;animation:bob 2.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-6px)}}
+.name-row{display:flex;gap:8px;width:100%;max-width:360px}
+.name-row input{flex:1;min-width:0;font:inherit;font-size:20px;padding:12px 14px;border-radius:14px;border:3px solid var(--line);background:var(--scroll);color:var(--ink)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row2 .btn{font-size:19px;padding:12px 10px;display:flex;align-items:center;justify-content:center;gap:6px}
+
+/* 단계 지도 */
+.map{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.lv{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:18px;background:var(--scroll);text-align:left;box-shadow:0 4px 0 var(--line);border:3px solid transparent;min-width:0}
+.lv.next{border-color:var(--gold);animation:glow 1.6s ease-in-out infinite}
+@keyframes glow{50%{box-shadow:0 4px 0 var(--line),0 0 0 4px #E8B53B55}}
+.lv .ln{font-family:var(--display);font-size:15px;color:#fff;background:var(--sky);border-radius:8px;padding:1px 8px;align-self:flex-start}
+.lv.hard .ln{background:#8A4FA0}
+.lv b{font-family:var(--display);font-weight:400;font-size:18px;line-height:1.3;word-break:keep-all}
+.lv small{color:var(--soft);font-size:13.5px}
+.lv .st{color:var(--gold);letter-spacing:1px}
+.lv[disabled]{opacity:.45;cursor:default}
+.dad{align-self:center;color:var(--soft);font-size:14px;text-decoration:underline}
+
+.top{display:flex;align-items:center;gap:10px}
+.bar{flex:1;height:14px;background:#EADCBC;border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--olive);border-radius:99px;transition:width .4s}
+.count{font-family:var(--display);color:var(--olive-dark);font-variant-numeric:tabular-nums}
+.scene{display:flex;gap:10px;align-items:flex-end}
+.scene svg{flex:none}
+.bubble{position:relative;background:var(--scroll);border-radius:18px;padding:12px 14px;line-height:1.6;flex:1;min-width:0;box-shadow:0 3px 0 var(--line)}
+.bubble b.who{font-family:var(--display);font-weight:400;color:var(--sky)}
+.bubble::before{content:"";position:absolute;left:-8px;bottom:16px;border:8px solid transparent;border-right-color:var(--scroll);border-left:0}
+.say{float:right;margin:0 0 4px 8px;background:#EFE4CB;border-radius:10px;padding:3px 9px;font-family:var(--display);font-size:14px;color:var(--olive-dark)}
+.ref{display:inline-block;font-family:var(--display);font-size:14px;color:#fff;background:var(--sky);border-radius:8px;padding:2px 8px}
+
+.card{background:var(--scroll);border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px;border:3px solid var(--line)}
+.qhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qno{font-family:var(--display);color:var(--olive);font-size:18px}
+.combo{font-family:var(--display);color:#fff;background:var(--fire);border-radius:99px;padding:2px 10px;font-size:15px}
+.ask{color:var(--soft);font-size:16px}
+.sentence{font-family:var(--display);font-size:24px;line-height:1.55;text-align:center;padding:8px 4px;word-break:keep-all}
+.blank{display:inline-block;min-width:3.4em;border-bottom:4px solid var(--gold);color:#9a6a00;text-align:center}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choices.one{grid-template-columns:1fr}
+.choice{font-family:var(--display);font-size:23px;padding:15px 8px;border-radius:18px;background:#fff;border:3px solid var(--line);box-shadow:0 4px 0 var(--line);word-break:keep-all;line-height:1.35}
+.choice.mean{font-family:var(--body);font-size:18px;text-align:left;padding:13px 14px;font-weight:700}
+.choice .n{display:inline-block;width:1.4em;color:var(--soft);font-size:17px}
+.choice.ok{background:#DDF3E3;border-color:var(--ok);box-shadow:0 4px 0 var(--ok);animation:pop .4s}
+.choice.no{background:#FBE2DF;border-color:var(--no);box-shadow:0 4px 0 var(--no);animation:shake .35s}
+.choice[disabled]{cursor:default}
+.choice .x{display:block;color:var(--no);font-size:14px;font-weight:400}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+.panel{border-radius:18px;padding:14px 16px;line-height:1.6;display:flex;flex-direction:column;gap:10px}
+.panel.good{background:#DDF3E3}
+.panel.bad{background:#FDF0D3}
+.panel.think{background:#E4EEF8}
+.panel h2{font-size:23px}
+.gain{font-family:var(--display);color:#8a5f00;font-size:19px}
+
+/* 뜻 익히기 카드 */
+.learn{background:var(--scroll);border:4px solid var(--gold);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;box-shadow:0 5px 0 var(--line)}
+.learn .lbl{font-family:var(--display);color:#8a5f00;font-size:16px}
+.learn .big{font-family:var(--display);font-size:46px;color:var(--olive-dark);line-height:1.1}
+.learn .mean{font-size:21px;font-weight:700;line-height:1.5}
+.learn .mean.hide{filter:blur(9px);user-select:none}
+.learn .ex{background:#fff;border-radius:12px;padding:8px 12px;width:100%}
+.learn .bib{color:var(--sky);font-size:15.5px}
+.learn .tip{color:var(--soft);font-size:15px}
+.cmp{display:grid;gap:6px}
+.cmp div{display:grid;grid-template-columns:4.6em 1fr;gap:8px;align-items:start;background:#fff;border-radius:12px;padding:8px 10px;border:2px solid transparent;text-align:left}
+.cmp div.right{border-color:var(--ok)}
+.cmp b{font-family:var(--display);font-weight:400;font-size:19px}
+.cmp span{font-size:15.5px}
+
+.result{text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
+.big-stars{font-size:56px;color:var(--gold);letter-spacing:4px;text-shadow:0 3px 0 #b98a1c}
+.big-stars span{display:inline-block;animation:pop .5s backwards}
+.big-stars .off{color:#E5D6B5;text-shadow:none}
+.tally{background:var(--scroll);border-radius:18px;padding:12px 18px;display:grid;grid-template-columns:auto auto;gap:4px 18px;text-align:left;box-shadow:0 3px 0 var(--line)}
+.tally span:nth-child(even){text-align:right;font-family:var(--display);color:#8a5f00;font-variant-numeric:tabular-nums}
+.tally .sum{border-top:2px dashed var(--line);padding-top:4px}
+.actions{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.pop{animation:pop .5s}
+@keyframes pop{0%{transform:scale(.6)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
+
+.dict{display:grid;gap:8px}
+.dgroup h3{font-size:18px;color:var(--soft);margin:8px 0 2px}
+.dword{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;background:var(--scroll);border-radius:16px;padding:10px 14px;text-align:left;box-shadow:0 3px 0 var(--line)}
+.dword b{font-family:var(--display);font-weight:400;font-size:22px;color:var(--olive-dark);min-width:3em}
+.dword span{font-size:15px;line-height:1.45}
+.dword em{font-style:normal;color:var(--gold);letter-spacing:1px;font-size:15px}
+.shop{display:flex;flex-direction:column;gap:14px;align-items:center}
+.stage{background:var(--scroll);border-radius:26px;padding:16px 30px;box-shadow:0 4px 0 var(--line)}
+.items{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;width:100%}
+.item{background:var(--scroll);border-radius:18px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:5px;box-shadow:0 4px 0 var(--line);border:3px solid transparent}
+.item.on{border-color:var(--olive)}
+.item b{font-family:var(--display);font-weight:400;font-size:18px}
+.item small{color:var(--soft);font-size:13.5px;text-align:center}
+.item .price{font-family:var(--display);color:#8a5f00;display:flex;align-items:center;gap:4px}
+.item.locked{opacity:.55}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-family:var(--display);z-index:60;animation:pop .3s;white-space:nowrap}
+.fly{position:fixed;z-index:50;font-family:var(--display);font-size:24px;color:#8a5f00;pointer-events:none;animation:fly 1s ease-out forwards;display:flex;align-items:center;gap:4px}
+@keyframes fly{to{transform:translateY(-70px);opacity:0}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:40;width:100%;height:100%}
+/* 난이도 */
+.diff{display:flex;gap:3px;align-items:center}
+.diff i{width:9px;height:9px;border-radius:50%;background:#E5D6B5}
+.diff i.on{background:var(--fire)}
+.rules{background:var(--scroll);border-radius:18px;padding:12px 16px;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;box-shadow:0 3px 0 var(--line);text-align:left;width:100%;margin:0}
+.rules dt{font-family:var(--display);color:var(--soft)}
+.rules dd{margin:0;font-family:var(--display);color:var(--ink)}
+.rules dd.new{color:var(--fire)}
+.hearts{font-size:20px;color:var(--no);letter-spacing:1px;white-space:nowrap}
+.hearts .lost{color:#E5D6B5}
+.hearts.hit{animation:shake .4s}
+.timer{height:8px;background:#EADCBC;border-radius:99px;overflow:hidden}
+.timer i{display:block;height:100%;background:var(--sky);border-radius:99px;transition:width 1s linear}
+.timer.low i{background:var(--no)}
+.tok{display:inline-block;font-family:var(--display);font-size:22px;padding:4px 8px;margin:3px 2px;border-radius:10px;background:#fff;border:2px dashed var(--line)}
+.tok.found{border:2px solid var(--no);background:#FBE2DF;text-decoration:line-through}
+.tok.no{animation:shake .35s;border-color:var(--no)}
+.hintbox{display:grid;gap:4px;background:#FFF4D6;border-radius:12px;padding:10px 12px;font-size:15px}
+.hintbtn{align-self:flex-start;background:#FFF4D6;border-radius:10px;padding:5px 10px;font-family:var(--display);font-size:15px;color:#8a5f00}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:380px){.sentence{font-size:21px}.choice{font-size:20px}.learn .big{font-size:40px}.map{grid-template-columns:1fr}}
+</style>
+
+<canvas id="fx"></canvas>
+<div class="wrap" id="app"></div>
+
+<script>
+/* ================= 낱말 사전 [뜻, 예문] =================
+   '손:몸'처럼 쌍점이 있는 것은 여러 뜻 낱말의 한 가지 뜻 */
+const DICT={
+ "심다":["식물의 뿌리나 씨앗을 흙 속에 묻다.","화분에 꽃씨를 심다."],
+ "씻다":["물로 더러운 것을 없애 깨끗하게 하다.","밥 먹기 전에 손을 씻다."],
+ "싣다":["물건을 차나 배, 동물 등에 올려놓다.","트럭에 이삿짐을 싣다."],
+ "싫다":["마음에 들지 않다. 하고 싶지 않다.","쓴 약은 먹기 싫다."],
+ "입다":["옷을 몸에 걸치다.","추워서 외투를 입다."],
+ "읽다":["글자를 보고 소리 내거나 그 뜻을 알다.","도서관에서 책을 읽다."],
+ "잃다":["가지고 있던 것이 없어져 찾을 수 없게 되다.","놀이터에서 장갑을 잃다."],
+ "익다":["열매나 곡식이 다 자라 먹기 좋게 되다.","감이 빨갛게 익다."],
+ "잊다":["알던 것이나 해야 할 일을 기억하지 못하다.","숙제를 깜빡 잊다."],
+ "않다":["'아니하다'를 줄인 말. 어떤 일을 하지 아니하다.","밥을 남기지 않다."],
+ "안다":["두 팔로 감싸 품에 꼭 끌어당기다.","우는 동생을 꼭 안다."],
+ "앉다":["엉덩이를 바닥이나 의자에 붙이고 몸을 세우다.","의자에 바르게 앉다."],
+ "얹다":["어떤 것 위에 올려놓다.","친구 어깨에 손을 얹다."],
+ "받치다":["쓰러지거나 떨어지지 않게 밑이나 옆에서 대다.","두 손으로 그릇을 받치다."],
+ "바치다":["귀한 것을 높은 분께 드리다.","하나님께 감사 헌금을 바치다."],
+ "받히다":["머리나 뿔 같은 것에 세게 부딪히다.","염소 뿔에 받히다."],
+ "밭치다":["체 같은 것에 걸러 물기를 빼다.","삶은 국수를 체에 밭치다."],
+ "맞히다":["던지거나 쏜 것이 목표에 닿게 하다. 문제의 답을 맞게 하다.","공을 던져 과녁을 맞히다."],
+ "맞추다":["서로 꼭 맞게 붙이거나 나란히 놓고 비교하다.","퍼즐 조각을 맞추다."],
+ "마치다":["하던 일을 끝내다.","숙제를 다 마치다."],
+ "가리키다":["손가락 등으로 어느 쪽이나 무엇을 집어서 알리다. 무엇을 두고 말하다.","손가락으로 하늘을 가리키다."],
+ "가르치다":["지식이나 방법을 알려 주어 알게 하다.","선생님이 덧셈을 가르치다."],
+ "다르다":["서로 같지 않다.","쌍둥이도 얼굴이 조금 다르다."],
+ "틀리다":["셈이나 답이 맞지 않다.","받아쓰기에서 한 문제가 틀리다."],
+ "바라다":["생각한 대로 되기를 원하다.","동생이 빨리 낫기를 바라다."],
+ "바래다":["햇볕이나 오랜 시간 때문에 색이 변하다.","오래된 사진 색이 바래다."],
+ "늘리다":["수나 양을 더 많게 하다.","책 읽는 시간을 늘리다."],
+ "늘이다":["길이를 더 길게 하다.","고무줄을 쭉 늘이다."],
+ "반드시":["틀림없이 꼭.","약속은 반드시 지킨다."],
+ "반듯이":["기울거나 굽지 않고 바르게.","고개를 반듯이 들다."],
+ "짓다":["재료를 들여 집이나 밥, 옷 같은 것을 만들다.","목수가 집을 짓다."],
+ "짖다":["개가 크게 소리를 내다.","강아지가 멍멍 짖다."],
+ "짙다":["색깔이나 어둠, 안개 같은 것이 진하다.","아침에 안개가 짙다."],
+ "작다":["크기나 키가 보통보다 덜하다.","내 신발은 아빠 신발보다 작다."],
+ "적다":["수나 양이 많지 않다.","사탕이 두 개뿐이라 적다."],
+ "매다":["끈이나 줄을 묶어 풀어지지 않게 하다.","신발 끈을 매다."],
+ "메다":["어깨에 걸치거나 올려놓다.","어깨에 가방을 메다."],
+ "즐거워하다":["마음에 들어 기쁘고 흐뭇해하다.","선물을 받고 즐거워하다."],
+ "놀라다":["뜻밖의 일로 가슴이 철렁하다.","큰 소리에 깜짝 놀라다."],
+ "부끄러워하다":["창피하거나 쑥스러워하다.","칭찬을 받고 부끄러워하다."],
+ "두려워하다":["무섭고 걱정스러워하다.","천둥소리를 두려워하다."],
+ "담대하다":["겁이 없고 마음이 크고 굳세다.","다윗은 골리앗 앞에서도 담대했다."],
+ "용감하다":["씩씩하고 겁이 없다.","소방관이 용감하게 불을 끄다."],
+ "조용하다":["시끄럽지 않고 고요하다.","도서관은 늘 조용하다."],
+ "부지런하다":["쉬지 않고 열심히 일하다.","개미는 부지런하다."],
+ "정직하다":["거짓이나 꾸밈 없이 바르다.","잘못을 정직하게 말하다."],
+ "지혜롭다":["사물의 이치를 잘 알고 바르게 판단하다.","솔로몬은 지혜로웠다."],
+ "슬기롭다":["일을 바르게 판단하고 잘 처리하는 힘이 있다.","슬기롭게 문제를 풀다."],
+ "부유하다":["재산이 많아 넉넉하다.","부유한 집안에서 태어나다."],
+ "힘세다":["힘이 많다.","삼촌은 힘세서 짐을 번쩍 든다."],
+ "유명하다":["이름이 널리 알려져 있다.","이 빵집은 동네에서 유명하다."],
+ "순종하다":["윗사람의 말이나 뜻을 그대로 따르다.","부모님 말씀에 순종하다."],
+ "따르다":["남의 말이나 뜻을 그대로 하다. 뒤에서 같이 가다.","선생님 말씀을 따르다."],
+ "다투다":["의견이 맞지 않아 서로 따지며 싸우다.","장난감 때문에 동생과 다투다."],
+ "떠나다":["있던 곳에서 다른 곳으로 옮겨 가다.","기차가 역을 떠나다."],
+ "숨기다":["남이 보거나 알지 못하게 감추다.","장난감을 이불 속에 숨기다."],
+ "헤어지다":["함께 있던 사람과 서로 떨어지다.","친구와 놀이터에서 헤어지다."],
+ "만나다":["누구와 마주 보게 되다.","길에서 선생님을 만나다."],
+ "돕다":["남이 하는 일이 잘되도록 거들다.","엄마의 설거지를 돕다."],
+ "기다리다":["사람이나 때가 오기를 바라며 있다.","버스를 기다리다."],
+ "높이다":["높게 하다. 남을 받들어 귀하게 여기다.","자기를 높이는 사람은 친구가 적다."],
+ "낮추다":["낮게 하다. 자기를 내세우지 않고 겸손하게 하다.","목소리를 낮추다."],
+ "세우다":["쓰러진 것을 바로 서게 하다.","넘어진 자전거를 세우다."],
+ "자랑하다":["자기 것이 좋다고 남에게 드러내어 말하다.","새 운동화를 자랑하다."],
+ "울다":["슬프거나 아파서 눈물을 흘리며 소리를 내다.","넘어져서 엉엉 울다."],
+ "웃다":["기쁘거나 재미있어서 얼굴을 활짝 펴고 소리를 내다.","재미있는 이야기에 깔깔 웃다."],
+ "슬퍼하다":["마음이 아프고 괴로워하다.","강아지가 아파서 슬퍼하다."],
+ "소리치다":["큰 소리를 지르다.","멀리 있는 친구를 소리쳐 부르다."],
+ "참다":["웃음, 울음, 아픔 같은 것을 억누르고 견디다.","주사가 아파도 꾹 참다."],
+ "어둠":["빛이 없어 캄캄한 상태.","어둠 속에서 별이 빛나다."],
+ "빛":["해나 불에서 나와 사물을 밝게 보이게 하는 것.","창문으로 햇빛이 들어오다."],
+ "그늘":["빛이 가려져 어두워진 곳.","나무 그늘에서 쉬다."],
+ "밤":["해가 진 뒤부터 다음 날 해가 뜰 때까지.","밤에는 일찍 자야 한다."],
+ "물":["강, 바다, 비 등을 이루는 맑은 액체.","목이 말라 물을 마시다."],
+ "좁다":["넓이나 폭이 작다.","골목길이 좁다."],
+ "넓다":["넓이나 폭이 크다.","운동장이 넓다."],
+ "높다":["아래에서 위까지가 길다.","산이 높다."],
+ "낮다":["아래에서 위까지가 짧다. 높지 않다.","우리 동네 언덕은 낮다."],
+ "부드럽다":["닿는 느낌이나 말씨가 거칠지 않고 순하다.","엄마는 부드럽게 말씀하신다."],
+ "거칠다":["말이나 행동이 사납고 험하다. 표면이 매끄럽지 않다.","거친 말은 친구 마음을 아프게 한다."],
+ "짧다":["길이나 시간이 길지 않다.","연필이 짧아졌다."],
+ "따뜻하다":["덥지 않을 만큼 알맞게 높은 온도이다. 마음이 포근하다.","햇볕이 따뜻하다."],
+ "순종":["윗사람의 말이나 뜻을 그대로 따름.","하나님 말씀에 대한 순종."],
+ "감사":["고맙게 여기는 마음. 고마움을 나타냄.","도와준 친구에게 감사를 전하다."],
+ "찬양":["훌륭함을 높여 기리는 것. 하나님을 높이는 노래.","주일 예배에서 찬양을 부르다."],
+ "고백":["마음속에 숨긴 일이나 생각을 털어놓음.","잘못을 솔직하게 고백하다."],
+ "회개":["잘못을 뉘우치고 마음을 바꾸어 하나님께 돌아옴.","거짓말한 것을 회개하다."],
+ "기도":["하나님께 마음을 말씀드리고 구하는 것.","자기 전에 기도하다."],
+ "인내":["괴롭고 힘든 것을 참고 견딤.","인내하며 끝까지 달리다."],
+ "지혜":["사물의 이치를 깨닫고 바르게 판단하는 힘.","어려운 문제를 지혜롭게 풀다."],
+ "재산":["가지고 있는 돈이나 집, 땅 같은 것.","할아버지의 재산은 작은 밭 하나였다."],
+ "겸손":["남을 높이고 자기를 내세우지 않는 태도.","상을 받고도 겸손하게 인사하다."],
+ "정직":["거짓이나 꾸밈 없이 바르고 곧음.","정직은 가장 좋은 친구다."],
+ "용감":["용기가 있고 씩씩함.","용감하게 발표하다."],
+ "근면":["부지런히 일하며 힘씀.","근면한 농부."],
+ "조심":["잘못이나 실수가 없도록 마음을 씀.","길을 건널 때 조심하다."],
+ "노력":["무엇을 이루려고 몸과 마음을 다해 애씀.","노력해서 줄넘기를 백 번 하다."],
+ "낙심":["바라던 일이 이루어지지 않아 마음이 꺾임.","시험을 못 봤다고 낙심하지 말자."],
+ "자랑":["자기 것이 좋다고 남에게 드러내어 말함.","새 신발 자랑."],
+ "욕심":["무엇을 지나치게 가지거나 하고 싶어 하는 마음.","과자를 혼자 다 먹으려는 욕심."],
+ "긍휼":["불쌍히 여겨 돌보아 주는 마음.","아픈 친구를 긍휼히 여기다."],
+ "소홀":["대수롭지 않게 여겨 정성을 덜 들임.","숙제를 소홀히 하다."],
+ "무심":["남의 일에 관심이 없음.","동생이 우는데 무심히 지나가다."],
+ "엄격":["말이나 태도, 규칙이 매우 엄하고 철저함.","규칙을 엄격히 지키다."],
+ "담대히":["겁내지 않고 용기 있게.","친구들 앞에서 담대히 말하다."],
+ "조용히":["소리 내지 않고 고요하게.","도서관에서 조용히 책을 읽다."],
+ "몰래":["남이 모르게 살짝.","몰래 선물을 준비하다."],
+ "천천히":["느리게, 서두르지 않고.","천천히 꼭꼭 씹어 먹다."],
+ "언약":["말로 굳게 맺은 약속. 하나님이 사람과 맺으신 약속.","하나님이 노아와 맺으신 언약."],
+ "경고":["조심하라고 미리 알림.","위험하다는 경고를 듣다."],
+ "심판":["잘잘못을 가려 판단함.","심판이 반칙을 선언하다."],
+ "축제":["기쁜 일을 축하하는 큰 잔치.","가을 축제에 가다."],
+ "간구":["간절히 바라며 구함.","아픈 동생을 위해 간구하다."],
+ "칭찬":["좋은 점이나 잘한 일을 훌륭하다고 말함.","선생님께 칭찬을 듣다."],
+ "고민":["마음속으로 괴로워하며 애를 태움.","어떤 선물을 살지 고민하다."],
+ "약속":["다른 사람과 앞으로 할 일을 미리 정함.","친구와 놀이터에서 만나기로 약속하다."],
+ "손:몸":["팔목 끝에 달린 몸의 부분.","밥 먹기 전에 손을 씻다."],
+ "손:일손":["일을 하는 사람.","가게에 손이 모자라다."],
+ "손:씀씀이":["('손이 크다'에서) 물건이나 돈을 쓰는 마음씨.","할머니는 손이 커서 음식을 많이 하신다."],
+ "손:힘":["어떤 일을 할 수 있는 힘이나 영향이 미치는 범위.","그 일은 이제 내 손을 떠났다."],
+ "눈:보는 힘":["물체를 보는 힘.","할아버지는 눈이 어두워 안경을 쓰신다."],
+ "눈:하늘":["하늘에서 내리는 하얀 얼음 알갱이.","밤새 눈이 펑펑 내리다."],
+ "눈:남의 시선":["남이 나를 보는 것.","사람들의 눈이 신경 쓰이다."],
+ "눈:판단력":["무엇이 좋은지 알아보는 힘.","보석을 알아보는 눈이 있다."],
+ "먹다:음식":["음식을 입으로 넣어 삼키다.","동생이 밥을 맛있게 먹다."],
+ "먹다:나이":["나이를 더하다.","설날에 나이를 한 살 더 먹다."],
+ "먹다:마음":["어떤 마음이나 생각을 가지다.","공부를 열심히 하기로 마음을 먹다."],
+ "먹다:겁":["겁이나 충격을 느끼다.","큰 개를 보고 겁을 먹다."],
+ "쓰다:글":["종이 같은 곳에 글자를 적다.","공책에 이름을 쓰다."],
+ "쓰다:머리":["모자나 안경 같은 것을 머리나 얼굴에 얹다.","모자를 쓰고 나가다."],
+ "쓰다:맛":["약이나 커피처럼 혀에 느껴지는 맛이 쓰다.","약이 너무 써서 먹기 싫다."],
+ "쓰다:돈":["돈이나 물건을 사용하다.","용돈을 다 써 버리다."],
+ "열다:말":["('입을 열다'에서) 말을 하기 시작하다.","선생님이 입을 열자 모두 조용해졌다."],
+ "열다:문":["닫힌 문이나 뚜껑을 젖히다.","창문을 열어 바람을 들이다."],
+ "열다:가게":["가게 문을 열고 장사를 시작하다.","빵집은 아침 아홉 시에 문을 연다."],
+ "열다:모임":["모임이나 잔치를 베풀다.","생일 잔치를 열다."],
+ "귀를 기울이다":["남의 말이나 소리를 주의 깊게 듣다.","선생님 말씀에 귀를 기울이다."],
+ "귀가 얇다":["남의 말을 쉽게 믿고 따르다.","귀가 얇아서 친구 말만 듣고 따라 했다."],
+ "귀에 못이 박히다":["같은 말을 너무 여러 번 들어 지겹다.","일찍 자라는 말을 귀에 못이 박히도록 들었다."],
+ "귀를 닫다":["남의 말을 들으려 하지 않다.","잔소리에 귀를 닫다."],
+ "발 벗고 나서다":["남의 일이나 해야 할 일에 적극적으로 나서다.","반 청소에 발 벗고 나서다."],
+ "발을 끊다":["오가던 곳에 다시 가지 않다.","그 가게에 발을 끊었다."],
+ "발이 넓다":["아는 사람이 많다.","아빠는 발이 넓어서 아는 사람이 많다."],
+ "발이 묶이다":["어떤 일 때문에 움직일 수 없게 되다.","폭설로 발이 묶였다."],
+ "눈엣가시":["몹시 밉거나 싫어 늘 눈에 거슬리는 사람.","형은 나를 눈엣가시처럼 여겼다."],
+ "눈에 넣어도 아프지 않다":["몹시 귀엽고 사랑스럽다.","할머니께 손주는 눈에 넣어도 아프지 않다."],
+ "눈이 높다":["좋은 것만 찾을 만큼 바라는 기준이 높다.","눈이 높아서 아무 옷이나 안 입는다."],
+ "눈감아 주다":["잘못을 알고도 모른 척해 주다.","한 번만 눈감아 주세요."],
+ "눈 깜짝할 사이":["아주 짧은 순간.","과자가 눈 깜짝할 사이에 없어졌다."],
+ "눈코 뜰 새 없다":["정신을 차릴 수 없을 만큼 몹시 바쁘다.","이사하는 날은 눈코 뜰 새 없다."],
+ "마음을 먹다":["무엇을 하기로 굳게 정하다.","매일 성경을 읽기로 마음을 먹다."],
+ "마음을 놓다":["걱정을 그치고 안심하다.","동생이 무사히 와서 마음을 놓았다."],
+ "마음이 급하다":["빨리 하고 싶어 조급하다.","늦을까 봐 마음이 급하다."],
+ "마음을 비우다":["욕심을 버리다.","마음을 비우니 편해졌다."],
+ "그래서":["앞의 내용이 뒤의 내용의 까닭이 될 때 쓰는 말.","비가 왔다. 그래서 우산을 썼다."],
+ "그러나":["앞의 내용과 반대되는 내용을 이을 때 쓰는 말.","배가 고팠다. 그러나 참았다."],
+ "그런데":["이야기를 다른 쪽으로 돌리거나, 앞과 다른 상황을 이을 때 쓰는 말.","공원에 갔다. 그런데 문이 닫혀 있었다."],
+ "또는":["둘 가운데 하나를 고를 때 쓰는 말.","빵 또는 밥을 먹자."],
+ "왜냐하면":["뒤에 까닭을 말할 때 쓰는 말.","오늘은 일찍 잔다. 왜냐하면 내일 소풍을 가기 때문이다."],
+ "그리고":["앞의 내용에 이어 다른 내용을 덧붙일 때 쓰는 말.","손을 씻었다. 그리고 밥을 먹었다."],
+ "예를 들면":["앞의 말을 쉽게 보여 주려고 예를 들 때 쓰는 말.","과일을 좋아한다. 예를 들면 사과, 배가 있다."],
+ "통곡하다":["소리를 높여 슬피 울다.","슬픈 소식에 통곡하다."],
+ "환호하다":["기뻐서 크게 소리치다.","골이 들어가자 관중이 환호하다."],
+ "감탄하다":["훌륭한 것을 보고 마음속 깊이 놀라다.","멋진 경치에 감탄하다."],
+ "안도하다":["걱정하던 일이 해결되어 마음을 놓다.","길을 잃은 강아지를 찾고 안도하다."],
+ "형통하다":["하는 일이 뜻대로 잘되어 가다.","하나님이 함께하셔서 형통하다."],
+ "실패하다":["일을 잘못하여 뜻한 대로 되지 않다.","첫 번째 도전은 실패했다."],
+ "게으르다":["움직이거나 일하기를 싫어하는 버릇이 있다.","게으른 베짱이."],
+ "망설이다":["이리저리 생각만 하고 얼른 정하지 못하다.","말을 걸까 말까 망설이다."],
+ "경외":["공경하면서 두려워함.","하나님을 경외하는 마음."],
+ "의심":["확실히 알 수 없어서 믿지 못함.","친구 말을 의심하다."],
+ "무시":["사람이나 말을 하찮게 여기거나 업신여김.","동생의 말을 무시하면 안 된다."],
+ "원망":["못마땅하게 여겨 남을 탓함.","비가 온다고 하늘을 원망하다."],
+ "원망하다":["못마땅하게 여겨 남을 탓하다.","넘어진 것을 친구 탓으로 원망하다."],
+ "칭찬하다":["좋은 점이나 잘한 일을 훌륭하다고 말하다.","선생님이 나를 칭찬하셨다."],
+ "위로하다":["슬프거나 괴로운 사람의 마음을 따뜻하게 달래다.","우는 친구를 위로하다."],
+ "존경하다":["훌륭한 사람을 받들어 공경하다.","부모님을 존경하다."],
+ "걱정":["안심이 되지 않아 마음을 졸임.","시험 걱정을 하다."]
+};
+const NOSWAP=[];
+const NAME=k=>k.split(":")[0];
+
+/* ================= 10단계 =================
+   ask: 묻는 말(없으면 빈칸 고르기) · s: 문장 ((   )=빈칸, [[ ]]=밑줄) · c: 보기 · w: 보기마다 사전 낱말 · a: 정답
+   lab: 여러 뜻 낱말에서 뜻을 물을 낱말 */
+const ASK_SYN="밑줄 친 낱말과 뜻이 가장 비슷한 말을 고르세요.";
+const ASK_ANT="밑줄 친 낱말과 뜻이 반대인 말을 고르세요.";
+const ASK_POLY="밑줄 친 낱말과 같은 뜻으로 쓰인 문장을 고르세요.";
+const ASK_IDIOM="빈칸에 들어갈 표현으로 가장 알맞은 것을 고르세요.";
+const ASK_CONJ="빈칸에 들어갈 이어 주는 말로 가장 알맞은 것을 고르세요.";
+const LEVELS=[
+ {t:"소리가 비슷한 낱말",sub:"심다? 씻다? 싣다? 입다? 읽다?",qs:[
+  {who:"노아",ref:"창세기 9:20",story:"큰 홍수가 끝나고 노아 가족이 방주에서 나왔어. 노아는 농사를 시작했대.",s:"노아가 땅에 포도나무를 (   ).",c:["심었다","씻었다","실었다","싫었다"],w:["심다","씻다","싣다","싫다"],a:0},
+  {who:"예수님",ref:"요한복음 13:5",story:"마지막 저녁을 드시던 날, 예수님께서 대야에 물을 담아 오셨어.",s:"예수님께서 제자들의 발을 (   ) 주셨다.",c:["심어","씻어","실어","싫어"],w:["심다","씻다","싣다","싫다"],a:1},
+  {who:"요셉",ref:"창세기 37:3",story:"야곱은 아들 요셉을 무척 사랑해서 채색옷을 지어 주었어.",s:"요셉은 아버지가 지어 준 채색옷을 (   ).",c:["잃었다","입었다","읽었다","잊었다"],w:["잃다","입다","읽다","잊다"],a:1},
+  {who:"에스라",ref:"느헤미야 8:3",story:"예루살렘 성벽을 다시 쌓은 뒤, 백성이 모두 광장에 모였어.",s:"에스라가 백성 앞에서 율법책을 (   ).",c:["읽었다","잃었다","익었다","입었다"],w:["읽다","잃다","익다","입다"],a:0},
+  {who:"요셉",ref:"창세기 40:23",story:"요셉은 감옥에서 술 맡은 신하의 꿈을 풀어 주었어. 꿈대로 그 신하는 다시 왕을 섬기게 되었지.",s:"그런데 술 맡은 신하는 요셉을 기억하지 못하고 (   ).",c:["잃었다","익었다","잊었다","읽었다"],w:["잃다","익다","잊다","읽다"],a:2}]},
+ {t:"헷갈리는 맞춤법",sub:"바라다? 바래다? 받치다? 바치다?",qs:[
+  {who:"사무엘",ref:"사무엘상 16:7",story:"사무엘은 키가 큰 엘리압을 보고 왕이 될 사람이라고 생각했어.",s:"하나님은 사람과 (   ) 보신다. 사람은 겉모습을 보지만 하나님은 마음을 보신다.",c:["틀리게","다르게"],w:["틀리다","다르다"],a:1},
+  {who:"이사야",ref:"이사야 40:31",story:"지치고 힘든 백성에게 하나님께서 힘을 주시겠다고 하셨어.",s:"여호와를 (   ) 사람은 새 힘을 얻는다.",c:["바래는","바라는"],w:["바래다","바라다"],a:1},
+  {who:"예수님",ref:"요한복음 5:39",story:"성경을 열심히 공부하는 사람들에게 예수님께서 말씀하셨어.",s:"성경은 바로 나를 (   ) 증언하는 책이다.",c:["가르쳐","가리켜"],w:["가르치다","가리키다"],a:1},
+  {who:"다윗",ref:"사무엘상 17:49",story:"소년 다윗이 거인 골리앗 앞에 섰어. 다윗은 주머니에서 돌 하나를 꺼냈지.",s:"다윗이 물매로 돌을 던져 골리앗의 이마를 (   ).",c:["맞췄다","마쳤다","맞혔다"],w:["맞추다","마치다","맞히다"],a:2},
+  {who:"다니엘",ref:"다니엘 1:8",story:"다니엘은 바벨론 왕궁에서 공부하게 되었어. 왕은 자기가 먹는 음식과 포도주를 주었지.",s:"다니엘은 왕의 음식으로 자기를 더럽히지 (   ) 마음먹었다.",c:["않기로","안기로","앉기로","얹기로"],w:["않다","안다","앉다","얹다"],a:0},
+  {who:"모세",ref:"출애굽기 17:12",story:"이스라엘이 싸울 때, 모세가 손을 들고 있으면 이스라엘이 이겼어. 그런데 모세의 팔이 아파 왔지.",s:"아론과 훌이 양쪽에서 모세의 손을 (   ) 주었다.",c:["바쳐","받쳐","받혀","밭쳐"],w:["바치다","받치다","받히다","밭치다"],a:1}]},
+ {t:"비슷한 말 찾기",sub:"밑줄 친 낱말과 뜻이 비슷한 말",qs:[
+  {who:"예수님",ref:"누가복음 15:5",story:"예수님께서 양 백 마리 중 한 마리를 잃은 목자 이야기를 들려주셨어.",ask:ASK_SYN,s:"목자는 잃은 양을 찾자 [[기뻐하며]] 양을 어깨에 메었다.",c:["놀라며","즐거워하며","부끄러워하며","두려워하며"],w:["놀라다","즐거워하다","부끄러워하다","두려워하다"],a:1},
+  {who:"여호수아",ref:"여호수아 1:9",story:"모세가 죽은 뒤 여호수아가 백성을 이끌게 되었어. 앞에는 싸워야 할 큰 성들이 있었지.",ask:ASK_SYN,s:"하나님은 여호수아에게 '강하고 [[담대하라]]' 하고 말씀하셨다.",c:["조용하라","부지런하라","용감하라","정직하라"],w:["조용하다","부지런하다","용감하다","정직하다"],a:2},
+  {who:"요셉",ref:"창세기 41:39",story:"요셉은 이집트 왕 바로의 꿈을 풀어 주고, 흉년을 준비할 방법까지 알려 주었어.",ask:ASK_SYN,s:"바로는 요셉처럼 [[지혜로운]] 사람은 없다고 말했다.",c:["부유한","힘센","유명한","슬기로운"],w:["부유하다","힘세다","유명하다","슬기롭다"],a:3},
+  {who:"예수님",ref:"누가복음 2:51",story:"열두 살 예수님은 성전에서 선생님들과 이야기를 나누신 뒤 부모님과 함께 나사렛으로 돌아가셨어.",ask:ASK_SYN,s:"예수님은 나사렛에서 부모님께 [[순종하며]] 지내셨다.",c:["따르며","다투며","떠나며","숨기며"],w:["따르다","다투다","떠나다","숨기다"],a:0},
+  {who:"룻",ref:"룻기 1:16",story:"남편을 잃은 나오미가 고향으로 돌아가려 하자, 며느리 룻도 따라가겠다고 했어.",ask:ASK_SYN,s:"룻은 시어머니 나오미를 [[떠나지]] 않겠다고 말했다.",c:["만나지","헤어지지","돕지","기다리지"],w:["만나다","헤어지다","돕다","기다리다"],a:1}]},
+ {t:"반대말 찾기",sub:"밑줄 친 낱말과 뜻이 반대인 말",qs:[
+  {who:"예수님",ref:"마태복음 23:12",story:"예수님께서 잘난 척하는 사람들을 보시고 말씀하셨어.",ask:ASK_ANT,s:"자기를 [[높이는]] 사람은 낮아질 것이다.",c:["세우는","자랑하는","낮추는","돕는"],w:["세우다","자랑하다","낮추다","돕다"],a:2},
+  {who:"전도서",ref:"전도서 3:4",story:"전도서는 세상 모든 일에는 알맞은 때가 있다고 말해.",ask:ASK_ANT,s:"[[울]] 때가 있다.",c:["슬퍼할","웃을","소리칠","참을"],w:["슬퍼하다","웃다","소리치다","참다"],a:1},
+  {who:"창조",ref:"창세기 1:2-3",story:"하나님께서 세상을 만드시기 전, 땅은 아무것도 없이 비어 있었어.",ask:ASK_ANT,s:"그때 깊은 물 위에는 [[어둠]]이 덮여 있었다.",c:["그늘","밤","빛","물"],w:["그늘","밤","빛","물"],a:2},
+  {who:"예수님",ref:"마태복음 7:13",story:"예수님께서 산 위에서 생명으로 가는 길에 대해 말씀하셨어.",ask:ASK_ANT,s:"[[좁은]] 문으로 들어가라.",c:["작은","넓은","높은","낮은"],w:["작다","넓다","높다","낮다"],a:1},
+  {who:"솔로몬",ref:"잠언 15:1",story:"솔로몬은 말을 지혜롭게 하는 법을 잠언에 적었어.",ask:ASK_ANT,s:"[[부드러운]] 대답은 화를 가라앉힌다.",c:["조용한","짧은","따뜻한","거친"],w:["조용하다","짧다","따뜻하다","거칠다"],a:3}]},
+ {t:"이어 주는 말",sub:"그래서? 그러나? 왜냐하면?",qs:[
+  {who:"요셉의 형들",ref:"창세기 37:3-4",story:"요셉 이야기의 앞부분이야. 두 문장이 어떻게 이어지는지 생각해 봐.",ask:ASK_CONJ,s:"야곱은 아들들 가운데 요셉을 가장 사랑했다. (   ) 형들은 요셉을 미워했다.",c:["그러나","그래서","또는","예를 들면"],w:["그러나","그래서","또는","예를 들면"],a:1},
+  {who:"다니엘",ref:"다니엘 6:10",story:"왕은 30일 동안 왕 말고 다른 신에게 기도하면 사자 굴에 던지라는 법을 만들었어.",ask:ASK_CONJ,s:"다니엘은 그 법이 만들어진 것을 알았다. (   ) 전에 하던 대로 하루 세 번 하나님께 기도했다.",c:["그래서","왜냐하면","그러나","또는"],w:["그래서","왜냐하면","그러나","또는"],a:2},
+  {who:"다윗",ref:"사무엘상 17:45-47",story:"모든 군인이 골리앗을 무서워했지만 소년 다윗은 달랐어.",ask:ASK_CONJ,s:"다윗은 골리앗이 두렵지 않았다. (   ) 하나님께서 함께하신다고 믿었기 때문이다.",c:["그래서","그런데","예를 들면","왜냐하면"],w:["그래서","그런데","예를 들면","왜냐하면"],a:3},
+  {who:"삭개오",ref:"누가복음 19:3",story:"예수님께서 여리고 마을을 지나가셨어. 길에는 사람이 아주 많았지.",ask:ASK_CONJ,s:"삭개오는 예수님을 보고 싶었다. (   ) 키가 작아 사람들에게 가려 보이지 않았다.",c:["그런데","그래서","왜냐하면","그리고"],w:["그런데","그래서","왜냐하면","그리고"],a:0},
+  {who:"삭개오",ref:"누가복음 19:4",story:"삭개오는 키가 작아서 예수님을 볼 수 없었어. 어떻게 했을까?",ask:ASK_CONJ,s:"삭개오는 사람들에게 가려 예수님이 보이지 않았다. (   ) 앞으로 달려가 뽕나무에 올라갔다.",c:["그러나","왜냐하면","그래서","또는"],w:["그러나","왜냐하면","그래서","또는"],a:2}]},
+ {t:"성경 속 어려운 낱말 ①",sub:"이야기를 읽어야 고를 수 있어요",hard:true,qs:[
+  {who:"사울과 사무엘",ref:"사무엘상 15:22",story:"사울 왕은 하나님 말씀대로 하지 않고, 좋은 양과 소를 남겨 제물로 드리겠다고 했어. 그러자 사무엘이 말했지.",s:"하나님 말씀을 (   ) 것이 제사보다 낫습니다.",c:["감사하는","찬양하는","순종하는","고백하는"],w:["감사","찬양","순종","고백"],a:2},
+  {who:"세례 요한",ref:"마태복음 3:2",story:"세례 요한은 광야에서 사람들에게 잘못을 뉘우치고 하나님께 돌아오라고 외쳤어.",s:"(   )하라. 하늘나라가 가까이 왔다.",c:["감사","회개","기도","찬양"],w:["감사","회개","기도","찬양"],a:1},
+  {who:"욥",ref:"야고보서 5:11",story:"욥은 재산과 자녀를 다 잃고 몸에 병까지 들었어. 그래도 끝까지 참으며 하나님을 원망하지 않았지.",s:"야고보는 '여러분은 욥의 (   )에 대해 들었습니다'라고 썼다.",c:["재산","지혜","인내","기도"],w:["재산","지혜","인내","기도"],a:2},
+  {who:"바울",ref:"빌립보서 2:3",story:"바울은 교회 사람들이 서로 자기가 더 잘났다고 다투지 않기를 바랐어.",s:"(   )한 마음으로 자기보다 남을 더 낫게 여기라.",c:["정직","겸손","용감","근면"],w:["정직","겸손","용감","근면"],a:1},
+  {who:"바울",ref:"데살로니가전서 5:18",story:"바울은 좋은 일에도 힘든 일에도 하나님께 '고맙습니다' 하는 마음을 가지라고 편지에 썼어.",s:"모든 일에 (   )하라.",c:["조심","노력","인내","감사"],w:["조심","노력","인내","감사"],a:3}]},
+ {t:"성경 속 어려운 낱말 ②",sub:"낙심, 긍휼, 언약, 간구",hard:true,qs:[
+  {who:"바울",ref:"갈라디아서 6:9",story:"바울은 착한 일을 하다가 지친 사람들에게 편지를 썼어. 포기하지 않으면 때가 되어 열매를 거둔다고 했지.",s:"착한 일을 하다가 (   )하지 말자.",c:["자랑","낙심","욕심","조심"],w:["자랑","낙심","욕심","조심"],a:1},
+  {who:"예수님",ref:"마태복음 5:7",story:"예수님께서 산 위에서 어떤 사람이 복이 있는지 말씀하셨어. 어려운 사람을 불쌍히 여기고 돕는 사람 이야기도 하셨지.",s:"남을 (   )히 여기는 사람은 복이 있다.",c:["소홀","무심","긍휼","엄격"],w:["소홀","무심","긍휼","엄격"],a:2},
+  {who:"베드로와 요한",ref:"사도행전 4:29-31",story:"베드로와 요한은 예수님 이야기를 하지 말라고 위협을 받았어. 그래도 제자들은 함께 모여 겁내지 않게 해 달라고 기도했지.",s:"성령이 충만해진 제자들은 (   ) 하나님의 말씀을 전했다.",c:["조용히","몰래","천천히","담대히"],w:["조용히","몰래","천천히","담대히"],a:3},
+  {who:"노아",ref:"창세기 9:13",story:"홍수가 끝난 뒤, 하나님은 다시는 물로 세상을 멸하지 않겠다고 노아와 굳게 약속하셨어.",s:"무지개는 하나님과 세상 사이에 맺은 (   )의 증거이다.",c:["경고","언약","심판","축제"],w:["경고","언약","심판","축제"],a:1},
+  {who:"바울",ref:"빌립보서 4:6",story:"감옥에 갇힌 바울이 빌립보 교회에 편지를 보냈어. 걱정하지 말고 하나님께 간절히 구하라고 했지.",s:"아무것도 걱정하지 말고, 모든 일에 기도와 (   )로 구할 것을 하나님께 아뢰라.",c:["간구","칭찬","고민","약속"],w:["간구","칭찬","고민","약속"],a:0}]},
+ {t:"여러 뜻을 가진 낱말",sub:"같은 '손'이라도 뜻이 달라요",hard:true,qs:[
+  {who:"예수님",ref:"마가복음 10:16",story:"사람들이 예수님께 어린아이들을 데리고 왔어. 예수님은 아이들을 반기셨어.",ask:ASK_POLY,lab:"손",s:"예수님께서 아이들 위에 [[손]]을 얹고 축복하셨다.",c:["가게에 일할 손이 모자라다.","할머니는 손이 크시다.","밥 먹기 전에 손을 씻었다.","그 일은 이제 내 손을 떠났다."],w:["손:일손","손:씀씀이","손:몸","손:힘"],a:2},
+  {who:"예수님",ref:"요한복음 9:7",story:"예수님께서 태어날 때부터 앞을 못 보던 사람을 실로암 연못에 보내셨어.",ask:ASK_POLY,lab:"눈",s:"그 사람이 실로암 연못에서 씻자 [[눈]]이 밝아져 보게 되었다.",c:["밤새 눈이 펑펑 내렸다.","할아버지는 눈이 어두워 안경을 쓰신다.","사람들의 눈이 신경 쓰였다.","형은 좋은 물건을 알아보는 눈이 있다."],w:["눈:하늘","눈:보는 힘","눈:남의 시선","눈:판단력"],a:1},
+  {who:"오천 명",ref:"마태복음 14:20",story:"예수님께서 보리떡 다섯 개와 물고기 두 마리로 감사 기도를 하시고 나누어 주셨어.",ask:ASK_POLY,lab:"먹고",s:"모든 사람이 배불리 [[먹고]] 남은 조각이 열두 바구니나 되었다.",c:["설날에 나이를 한 살 더 먹었다.","공부를 열심히 하기로 마음을 먹었다.","큰 개를 보고 겁을 먹었다.","동생이 밥을 맛있게 먹었다."],w:["먹다:나이","먹다:마음","먹다:겁","먹다:음식"],a:3},
+  {who:"바울",ref:"갈라디아서 6:11",story:"바울은 갈라디아 교회에 보내는 편지 끝부분을 자기 손으로 직접 적었어.",ask:ASK_POLY,lab:"쓴",s:"내가 내 손으로 이렇게 큰 글자로 [[쓴]] 것을 보라.",c:["공책에 내 이름을 썼다.","모자를 쓰고 밖에 나갔다.","약이 너무 써서 먹기 싫었다.","용돈을 다 써 버렸다."],w:["쓰다:글","쓰다:머리","쓰다:맛","쓰다:돈"],a:0},
+  {who:"예수님",ref:"마태복음 5:2",story:"많은 사람이 산 위에 계신 예수님 곁으로 모여들었어. 모두 예수님 말씀을 기다렸지.",ask:ASK_POLY,lab:"열어",s:"예수님께서 입을 [[열어]] 사람들을 가르치셨다.",c:["창문을 열어 바람을 들였다.","빵집은 아침 아홉 시에 문을 연다.","선생님이 입을 열자 모두 조용해졌다.","생일 잔치를 열었다."],w:["열다:문","열다:가게","열다:말","열다:모임"],a:2}]},
+ {t:"몸으로 된 관용 표현",sub:"귀를 기울이다, 발 벗고 나서다",hard:true,qs:[
+  {who:"사무엘",ref:"사무엘상 3:10",story:"어린 사무엘이 성전에서 자는데 하나님이 이름을 부르셨어. 사무엘은 '말씀하세요. 주의 종이 듣겠습니다' 하고 대답했지.",ask:ASK_IDIOM,s:"사무엘은 하나님 말씀에 (   ).",c:["귀가 얇았다","귀를 기울였다","귀에 못이 박혔다","귀를 닫았다"],w:["귀가 얇다","귀를 기울이다","귀에 못이 박히다","귀를 닫다"],a:1},
+  {who:"느헤미야",ref:"느헤미야 2:17-18",story:"예루살렘 성벽이 무너졌다는 소식을 들은 느헤미야는 왕에게 허락을 받고 직접 예루살렘으로 가서 사람들을 모았어.",ask:ASK_IDIOM,s:"느헤미야는 성벽을 다시 쌓는 일에 (   ).",c:["발을 끊었다","발이 넓었다","발 벗고 나섰다","발이 묶였다"],w:["발을 끊다","발이 넓다","발 벗고 나서다","발이 묶이다"],a:2},
+  {who:"요셉의 형들",ref:"창세기 37:4",story:"야곱은 열두 아들 중 요셉만 특별히 사랑해서 채색옷을 지어 주었어. 형들은 그 모습을 보고 화가 났지.",ask:ASK_IDIOM,s:"형들은 요셉을 (   ) 여겼다.",c:["눈엣가시로","눈에 넣어도 아프지 않게","눈이 높게","눈감아 주듯"],w:["눈엣가시","눈에 넣어도 아프지 않다","눈이 높다","눈감아 주다"],a:0},
+  {who:"야곱",ref:"창세기 37:3",story:"야곱은 나이가 많이 들어서 요셉을 얻었어. 그래서 다른 아들들보다 요셉을 더 사랑했지.",ask:ASK_IDIOM,s:"야곱에게 요셉은 (   ) 아들이었다.",c:["눈코 뜰 새 없는","눈 깜짝할 사이의","눈에 넣어도 아프지 않을","눈엣가시 같은"],w:["눈코 뜰 새 없다","눈 깜짝할 사이","눈에 넣어도 아프지 않다","눈엣가시"],a:2},
+  {who:"룻",ref:"룻기 1:16-18",story:"나오미는 며느리 룻에게 친정으로 돌아가라고 했어. 하지만 룻은 '어머니가 가시는 곳에 나도 가겠어요' 하고 굳게 말했지.",ask:ASK_IDIOM,s:"룻은 나오미를 따라가기로 (   ).",c:["마음을 놓았다","마음이 급했다","마음을 비웠다","마음을 먹었다"],w:["마음을 놓다","마음이 급하다","마음을 비우다","마음을 먹다"],a:3}]},
+ {t:"문맥으로 뜻 알아맞히기",sub:"최종 단계! 통곡, 형통, 경외, 원망",hard:true,qs:[
+  {who:"베드로",ref:"마태복음 26:75",story:"베드로는 닭이 울기 전에 예수님을 세 번이나 모른다고 했어. 정말 닭이 울자 예수님 말씀이 생각났지.",s:"베드로는 밖으로 나가 몹시 (   ).",c:["환호했다","통곡했다","감탄했다","안도했다"],w:["환호하다","통곡하다","감탄하다","안도하다"],a:1},
+  {who:"요셉",ref:"창세기 39:2-3",story:"요셉은 이집트에 종으로 팔려 갔어. 하지만 하나님이 요셉과 함께하셨어.",s:"그래서 요셉은 하는 일마다 (   ).",c:["실패했다","망설였다","형통했다","게을렀다"],w:["실패하다","망설이다","형통하다","게으르다"],a:2},
+  {who:"솔로몬",ref:"잠언 1:7",story:"솔로몬은 지식을 얻는 첫걸음이 무엇인지 잠언에 적었어. 하나님을 높이고, 두려워하는 마음으로 섬기는 거래.",s:"여호와를 (   )하는 것이 지식의 시작이다.",c:["의심","경외","무시","원망"],w:["의심","경외","무시","원망"],a:1},
+  {who:"이스라엘 백성",ref:"출애굽기 16:2-3",story:"광야에서 배가 고파진 이스라엘 백성은 '차라리 이집트에서 죽었으면 좋았을걸' 하고 불평했어.",s:"백성은 모세와 아론을 (   ).",c:["칭찬했다","위로했다","존경했다","원망했다"],w:["칭찬하다","위로하다","존경하다","원망하다"],a:3},
+  {who:"베드로",ref:"마태복음 14:30-31",story:"베드로는 물 위를 걸어 예수님께 가다가, 거센 바람을 보고 무서워서 물에 빠져 들어갔어.",s:"예수님께서 손을 내밀어 베드로를 붙잡으시고 '믿음이 작은 사람아, 왜 (   )하였느냐' 하고 말씀하셨다.",c:["걱정","의심","감사","순종"],w:["걱정","의심","감사","순종"],a:1}]}
+];
+
+/* ================= 꾸미기 (다윗의 물건) ================= */
+const ITEMS=[
+ {id:"staff",name:"목동 지팡이",price:5, note:"양을 돌보던 다윗의 막대기"},
+ {id:"sling",name:"물매와 돌",  price:12,note:"골리앗 앞에 섰던 물매 (삼상 17:40)"},
+ {id:"harp", name:"수금",      price:20,note:"사울 왕 앞에서 탄 수금 (삼상 16:23)"},
+ {id:"robe", name:"요나단의 겉옷",price:30,note:"친구 요나단이 준 겉옷 (삼상 18:4)"},
+ {id:"bow",  name:"요나단의 활",price:40,note:"우정의 선물 활 (삼상 18:4)"},
+ {id:"crown",name:"왕관",      price:60,note:"이스라엘의 왕이 된 다윗"}
+];
+
+/* ================= 그림 ================= */
+function DAVID(s=64,wear){const w=wear||[],h=k=>w.includes(k);
+ return `<svg width="${s}" height="${s*70/64}" viewBox="0 -6 64 70" aria-label="다윗">
+${h("bow")?`<path d="M10 30q-8 14 0 28" stroke="#7A4E25" stroke-width="2.5" fill="none"/><path d="M10 30v28" stroke="#ddd" stroke-width="1"/>`:""}
+${h("staff")?`<path d="M54 60V14q0-6-5-6" stroke="#8A5A2B" stroke-width="3.2" fill="none" stroke-linecap="round"/>`:""}
+<path d="M18 36h24l5 26H13z" fill="${h("robe")?"#6B4FA0":"#E8DCC0"}"/>
+${h("robe")?`<path d="M30 36v26" stroke="#E8B53B" stroke-width="2"/>`:`<path d="M18 46h24" stroke="#B9824A" stroke-width="3"/>`}
+<rect x="25" y="31" width="10" height="6" fill="#E2A97A"/>
+<circle cx="30" cy="22" r="12" fill="#ECB88A"/>
+<path d="M17 21q0-14 13-14t13 14q-3-7-6-5-3-4-7-1-4-3-7 1-4-1-6 5z" fill="#7A3E1D"/>
+<circle cx="18.5" cy="19" r="3" fill="#7A3E1D"/><circle cx="41.5" cy="19" r="3" fill="#7A3E1D"/>
+<circle cx="25.5" cy="23" r="2.3" fill="#3A2E22"/><circle cx="34.5" cy="23" r="2.3" fill="#3A2E22"/>
+<circle cx="26.3" cy="22.2" r=".8" fill="#fff"/><circle cx="35.3" cy="22.2" r=".8" fill="#fff"/>
+<path d="M26.5 28.5q3.5 3 7 0" stroke="#8a3b22" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+<circle cx="22" cy="27" r="2.4" fill="#E98870" opacity=".6"/><circle cx="38" cy="27" r="2.4" fill="#E98870" opacity=".6"/>
+${h("crown")?`<path d="M19 12l1-11 5 6 5-8 5 8 5-6 1 11z" fill="#E8B53B" stroke="#b98a1c" stroke-width="1"/><circle cx="30" cy="6" r="1.8" fill="#D9534A"/>`:""}
+${h("harp")?`<path d="M6 44q0-12 10-12v20q-8 0-10-8z" fill="none" stroke="#B9824A" stroke-width="2.5"/><path d="M9 38v10M12 35v15" stroke="#E8B53B" stroke-width="1"/>`:""}
+${h("sling")?`<path d="M44 44q6 6 12 2" stroke="#7A4E25" stroke-width="1.8" fill="none"/><circle cx="56" cy="46" r="3" fill="#9a9a9a"/>`:""}
+</svg>`;}
+const JONATHAN=(s=64)=>`<svg width="${s}" height="${s*70/64}" viewBox="0 -6 64 70" aria-label="요나단">
+<path d="M17 35h30l5 27H12z" fill="#2F5E96"/><path d="M32 35v27" stroke="#E8B53B" stroke-width="2"/>
+<rect x="27" y="30" width="10" height="6" fill="#C98E62"/>
+<circle cx="32" cy="21" r="12" fill="#D9A273"/>
+<path d="M19 21q0-15 13-15t13 15l-2-6H21z" fill="#2B1C12"/>
+<path d="M20 14h24" stroke="#E8B53B" stroke-width="3"/>
+<path d="M22 27q10 13 20 0q0 9-10 10q-10-1-10-10z" fill="#2B1C12"/>
+<circle cx="27.5" cy="21.5" r="2.2" fill="#3A2E22"/><circle cx="36.5" cy="21.5" r="2.2" fill="#3A2E22"/>
+<circle cx="28.2" cy="20.8" r=".8" fill="#fff"/><circle cx="37.2" cy="20.8" r=".8" fill="#fff"/>
+<path d="M29 29.5q3 2 6 0" stroke="#F1D1B5" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</svg>`;
+const COIN=(s=22)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E8B53B" stroke="#b98a1c" stroke-width="1.6"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="#fff3c4" stroke-width="1.2"/><path d="M12 7.5l1.3 2.8 3 .3-2.3 2 .7 3-2.7-1.6-2.7 1.6.7-3-2.3-2 3-.3z" fill="#fff3c4"/></svg>`;
+
+/* ================= 저장 ================= */
+const store={get(k,d){try{const v=localStorage.getItem("mw2_"+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+             set(k,v){try{localStorage.setItem("mw2_"+k,JSON.stringify(v))}catch(e){}}};
+let kid=store.get("kid",""),talents=store.get("talents",0),owned=store.get("owned",[]),wear=store.get("wear",[]);
+let stars=store.get("stars",{}),mastery=store.get("mastery",{}),openAll=store.get("openAll",false);
+let sfxOn=store.get("sfx",true),bgmOn=store.get("bgm",false),voiceOn=store.get("voice",true);
+const save=()=>{store.set("talents",talents);store.set("owned",owned);store.set("wear",wear);store.set("stars",stars);store.set("mastery",mastery)};
+function master(w,d){mastery[w]=Math.max(0,Math.min(3,(mastery[w]||0)+d));save()}
+const isOpen=i=>openAll||i===0||(stars[i-1]||0)>0;
+
+/* ================= 소리 ================= */
+let ac=null;
+function ctx(){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.state==="suspended")ac.resume()}catch(e){}return ac}
+const now=()=>{const a=ctx();return a?a.currentTime:0};
+function note(f,t,dur,type="triangle",vol=.16,slide){const a=ctx();if(!a)return;
+  const o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+dur);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  o.connect(g).connect(a.destination);o.start(t);o.stop(t+dur+.05)}
+const SFX={
+ tap(){note(520,now(),.07,"sine",.1)},
+ flip(){note(440,now(),.1,"sine",.1,880)},
+ good(){[659,784,1046].forEach((f,i)=>note(f,now()+i*.08,.18))},
+ combo(n){const b=660+Math.min(n,8)*40;[b,b*1.25,b*1.5,b*2].forEach((f,i)=>note(f,now()+i*.07,.16,"square",.07))},
+ bad(){note(330,now(),.35,"sawtooth",.08,140)},
+ coin(){note(988,now(),.08,"square",.07);note(1318,now()+.08,.22,"square",.07)},
+ fanfare(){[523,659,784,1046,784,1046].forEach((f,i)=>note(f,now()+i*.13,i===5?.6:.2,"triangle",.17))},
+ buy(){[784,988,1175,1568].forEach((f,i)=>note(f,now()+i*.06,.2,"sine",.15))},
+ star(i){note(880+i*220,now(),.3,"triangle",.17)},
+ unlock(){[523,784,1046,1318].forEach((f,i)=>note(f,now()+i*.1,.25,"triangle",.14))}
+};
+function sfx(n,...a){if(sfxOn)try{SFX[n](...a)}catch(e){}}
+const MEL=[392,440,494,587,494,440,392,330,294,330,392,440,392,330,294,392],BASS=[196,196,165,165,147,147,196,196];
+let bgmTimer=null,stepN=0;
+function bgmStart(){if(bgmTimer||!bgmOn||!ctx())return;
+  bgmTimer=setInterval(()=>{const t=now()+.02;note(MEL[stepN%16],t,.5,"triangle",.04);if(stepN%2===0)note(BASS[(stepN/2)%8],t,.8,"sine",.04);stepN++},380)}
+function bgmStop(){clearInterval(bgmTimer);bgmTimer=null}
+function speak(text){if(!voiceOn)return;try{const ss=window.speechSynthesis;if(!ss)return;ss.cancel();
+  const u=new SpeechSynthesisUtterance(text.replace(/\(\s*\)/g,"무엇").replace(/['()]/g," "));u.lang="ko-KR";u.rate=.9;u.pitch=1.1;
+  const v=ss.getVoices().find(v=>/ko/i.test(v.lang));if(v)u.voice=v;ss.speak(u)}catch(e){}}
+function hush(){try{speechSynthesis.cancel()}catch(e){}}
+document.addEventListener("pointerdown",()=>{ctx();bgmStart()});
+
+/* ================= 효과 ================= */
+const cv=document.getElementById("fx"),g2=cv.getContext("2d");let bits=[],raf=null;
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+function confetti(n=60,x,y){if(reduce)return;cv.width=innerWidth;cv.height=innerHeight;
+  const cols=["#E8B53B","#5E7F3A","#D9534A","#3E6FA8","#6B4FA0","#F2A08A"];x=x??innerWidth/2;y=y??innerHeight/3;
+  for(let i=0;i<n;i++)bits.push({x,y,vx:(Math.random()-.5)*12,vy:Math.random()*-11-3,r:Math.random()*6+4,c:cols[i%6],a:Math.random()*6,life:90});
+  if(!raf)loop()}
+function loop(){g2.clearRect(0,0,cv.width,cv.height);
+  bits.forEach(b=>{b.x+=b.vx;b.y+=b.vy;b.vy+=.35;b.vx*=.99;b.a+=.2;b.life--;g2.save();g2.translate(b.x,b.y);g2.rotate(b.a);g2.fillStyle=b.c;g2.fillRect(-b.r/2,-b.r/4,b.r,b.r/2);g2.restore()});
+  bits=bits.filter(b=>b.life>0&&b.y<cv.height+20);raf=bits.length?requestAnimationFrame(loop):(g2.clearRect(0,0,cv.width,cv.height),null)}
+function flyText(html,el){if(!el)return;const r=el.getBoundingClientRect(),d=document.createElement("div");d.className="fly";d.innerHTML=html;
+  d.style.left=(r.left+r.width/2-30)+"px";d.style.top=(r.top-10)+"px";document.body.appendChild(d);setTimeout(()=>d.remove(),1000)}
+function toast(t){const d=document.createElement("div");d.className="toast";d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),1800)}
+
+/* ================= 공통 ================= */
+const app=document.getElementById("app");
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const bat=w=>{const c=w.charCodeAt(w.length-1);return c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28!==0};
+const j=(w,a,b)=>w+(bat(w)?a:b);
+const nm=()=>kid||"친구";
+const call=()=>kid?(bat(kid)?kid+"아":kid+"야"):"친구야";
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const k=Math.floor(Math.random()*(i+1));[a[i],a[k]]=[a[k],a[i]]}return a};
+const starStr=n=>"★".repeat(n)+"☆".repeat(3-n);
+const starsFor=(r,t)=>{const x=r/t;return x>=.9?3:x>=.7?2:x>0?1:0};
+const mStars=w=>"★".repeat(mastery[w]||0)+"☆".repeat(3-(mastery[w]||0));
+const M=w=>DICT[w][0], EX=w=>DICT[w][1];
+const on=(id,fn)=>{const e=document.getElementById(id);if(e)e.onclick=fn};
+
+function hud(back){
+  return `<div class="hud">${back?`<button class="ico" id="backBtn">${esc(back)}</button>`:""}
+   <span class="purse" id="purse">${COIN(24)}<span id="talN">${talents}</span></span><span class="sp"></span>
+   <button class="ico ${sfxOn?"":"off"}" id="tSfx">효과음</button>
+   <button class="ico ${bgmOn?"":"off"}" id="tBgm">음악</button>
+   <button class="ico ${voiceOn?"":"off"}" id="tVoice">읽어주기</button></div>`}
+function bindHud(onBack){
+  const t=(id,fn)=>{const b=document.getElementById(id);b.onclick=()=>{fn();b.classList.toggle("off");sfx("tap")}};
+  t("tSfx",()=>{sfxOn=!sfxOn;store.set("sfx",sfxOn)});
+  t("tBgm",()=>{bgmOn=!bgmOn;store.set("bgm",bgmOn);bgmOn?bgmStart():bgmStop()});
+  t("tVoice",()=>{voiceOn=!voiceOn;store.set("voice",voiceOn);if(!voiceOn)hush()});
+  on("backBtn",()=>{sfx("tap");hush();onBack()});
+}
+function addTal(n,el){if(n<=0)return;talents+=n;save();const t=document.getElementById("talN");if(t)t.textContent=talents;
+  const p=document.getElementById("purse");if(p){p.classList.remove("bump");void p.offsetWidth;p.classList.add("bump")}
+  flyText(`+${n} ${COIN(20)}`,el);sfx("coin")}
+
+/* ================= 처음 화면 + 단계 지도 ================= */
+function home(){
+  hush();
+  const next=LEVELS.findIndex((_,i)=>!(stars[i]>0));
+  const nx=ITEMS.find(i=>!owned.includes(i.id));
+  app.innerHTML=`${hud()}
+  <div class="hero">
+    <div class="chars"><span class="bob">${DAVID(84,wear)}</span>${JONATHAN(70)}</div>
+    <h1>말씀 낱말 탐험대</h1>
+    <p>목동 소년 <b>다윗</b>과 친구 <b>요나단</b>이 성경 이야기 속으로 안내해요.<br>낱말을 맞히고, 그 뜻까지 기억하면 다음 단계가 열려요!</p>
+    <div class="name-row">
+      <input id="kidname" placeholder="탐험대원 이름" maxlength="8" value="${esc(kid)}" aria-label="탐험대원 이름">
+      <button class="btn ghost sm" id="saveName">저장</button>
+    </div>
+  </div>
+  <div class="row2">
+    <button class="btn gold" id="toShop">${COIN(22)} 다윗 꾸미기</button>
+    <button class="btn ghost" id="toDict">외운 낱말 보기</button>
+  </div>
+  ${nx?`<p style="text-align:center;color:var(--soft)">다음 선물: ${esc(nx.name)} (달란트 ${nx.price}개)</p>`:""}
+  <div class="map">${LEVELS.map((L,i)=>{const op=isOpen(i);
+    return `<button class="lv ${L.hard?"hard":""} ${i===next&&op?"next":""}" data-i="${i}" ${op?"":"disabled"}>
+      <span class="ln">${i+1}단계</span><b>${esc(L.t)}</b><small>${esc(L.sub)}</small>${dots(i)}
+      <span class="st">${op?starStr(stars[i]||0):"잠김"}</span></button>`}).join("")}</div>
+  <button class="dad" id="dad">${openAll?"아빠용: 단계 잠금 다시 켜기":"아빠용: 모든 단계 열기"}</button>`;
+  stopTimer();bindHud();
+  on("saveName",()=>{kid=document.getElementById("kidname").value.trim();store.set("kid",kid);sfx("good");home()});
+  on("toShop",()=>{sfx("tap");shop()});
+  on("toDict",()=>{sfx("tap");dict()});
+  on("dad",()=>{openAll=!openAll;store.set("openAll",openAll);sfx("tap");home()});
+  app.querySelectorAll(".lv").forEach(b=>b.onclick=()=>{sfx("tap");startLevel(+b.dataset.i)});
+}
+
+/* ================= 단계별 난이도 =================
+   hearts: 목숨(0=없음) · time: 문제당 초(0=없음) · hint: "free"/달란트 값/0(없음)
+   ch: 문제 보기 수 상한 · mean: 뜻 찾기 보기 수 · fix: 틀린 낱말 고치기 문제 비율
+   auto: 문제 자동 읽어주기 · info: 틀린 보기 뜻 알려주기 */
+const DIFF=[
+ {hearts:5,time:0, hint:"free",ch:4,mean:3,fix:0,  auto:true, info:true},
+ {hearts:5,time:0, hint:"free",ch:4,mean:3,fix:.5, auto:true, info:true},
+ {hearts:4,time:0, hint:2,     ch:4,mean:4,fix:0,  auto:true, info:true},
+ {hearts:4,time:0, hint:2,     ch:4,mean:4,fix:0,  auto:true, info:false},
+ {hearts:4,time:60,hint:3,     ch:4,mean:4,fix:.4, auto:false,info:false},
+ {hearts:3,time:55,hint:3,     ch:4,mean:4,fix:.5, auto:false,info:false},
+ {hearts:3,time:60,hint:0,     ch:4,mean:4,fix:0,  auto:false,info:false},
+ {hearts:3,time:50,hint:0,     ch:4,mean:4,fix:.4, auto:false,info:false},
+ {hearts:2,time:45,hint:0,     ch:4,mean:4,fix:.5, auto:false,info:false},
+ {hearts:2,time:40,hint:0,     ch:4,mean:4,fix:.6, auto:false,info:false}
+];
+const BL="(   )",isBlank=q=>q.s.includes(BL);
+const ul=s=>esc(s).replace(/\[\[(.+?)\]\]/g,'<u style="text-decoration-thickness:3px;text-decoration-color:var(--gold)">$1</u>');
+const plain=s=>s.replace(/\[\[|\]\]/g,"");
+const filled=q=>isBlank(q)?q.s.replace(BL,q.c[q.a]):plain(q.s);
+const dots=i=>`<span class="diff" aria-label="난이도 ${i+1}">${Array.from({length:10},(_,k)=>`<i class="${k<=i?"on":""}"></i>`).join("")}</span>`;
+
+/* ================= 한 단계 진행 =================
+   문제(빈칸 고르기 또는 틀린 낱말 고치기) → 정답 → 그 낱말 뜻 한 번 더 찾기 → 설명과 비교
+   단계 끝: 이번 단계 낱말 + 앞 단계 낱말 다시 떠올리기 */
+let play=null,tick=null;
+function stopTimer(){clearInterval(tick);tick=null}
+function startLevel(li,only){
+  stopTimer();
+  const L=LEVELS[li],D=DIFF[li];
+  const items=(only||L.qs.map((_,i)=>i)).map(i=>({kind:"q",qi:i,fix:isBlank(L.qs[i])&&Math.random()<D.fix}));
+  if(!only){
+    const answers=shuffle([...new Set(L.qs.map(q=>q.w[q.a]))].filter(w=>!w.includes(":"))).slice(0,2);
+    answers.forEach(w=>items.push({kind:"recall",w,set:L.qs.find(q=>q.w[q.a]===w).w}));
+    if(li>0){const prev=LEVELS[li-1+(Math.random()<.5&&li>1?-1:0)];const q=shuffle(prev.qs.filter(x=>!x.w[x.a].includes(":")))[0]||LEVELS[0].qs[0];items.push({kind:"recall",w:q.w[q.a],set:q.w,old:true})}
+  }
+  play={li,L,D,items,i:0,perfect:0,combo:0,maxCombo:0,earned:0,wrong:[],retry:!!only,hearts:D.hearts,over:false};
+  if(!only)levelIntro();else step();
+}
+function levelIntro(){
+  const L=play.L,D=play.D,n=play.li+1,prev=n>1?DIFF[n-2]:null;
+  const nw=k=>prev&&prev[k]!==D[k]?"new":"";
+  const msg=n===1?`${call()}, 성경 이야기 속 빈칸에 꼭 맞는 낱말을 찾아 줘. 맞히면 그 낱말 뜻도 한 번 더 찾아야 해!`
+    :`${n}단계야! 아래 규칙을 잘 봐. 빨간 글씨가 이번에 더 어려워진 거야.`;
+  app.innerHTML=`${hud("단계 지도")}
+  <div class="result" style="gap:10px">
+    <span class="ref" style="font-size:18px;padding:4px 14px">${n}단계</span>${dots(play.li)}
+    <h1 style="font-size:30px;color:var(--olive-dark)">${esc(L.t)}</h1>
+    <p style="color:var(--soft)">${esc(L.sub)}</p>
+    <dl class="rules">
+      <dt>목숨</dt><dd class="${nw("hearts")}">${D.hearts?"♥".repeat(D.hearts)+` ${D.hearts}개 (틀리면 하나씩 줄어요)`:"없음 (마음껏 틀려도 돼요)"}</dd>
+      <dt>시간</dt><dd class="${nw("time")}">${D.time?`문제마다 ${D.time}초`:"없음"}</dd>
+      <dt>힌트</dt><dd class="${nw("hint")}">${D.hint==="free"?"공짜":D.hint?`달란트 ${D.hint}개`:"없음"}</dd>
+      <dt>보기</dt><dd class="${nw("ch")} ${nw("mean")}">낱말 ${D.ch}개까지 · 뜻 ${D.mean}개</dd>
+      <dt>낱말 고치기</dt><dd class="${nw("fix")}">${D.fix?`문제의 ${Math.round(D.fix*100)}%`:"없음"}</dd>
+      <dt>틀렸을 때</dt><dd class="${nw("info")}">${D.info?"그 낱말 뜻을 알려 줘요":"알려 주지 않아요"}</dd>
+      <dt>읽어주기</dt><dd class="${nw("auto")}">${D.auto?"문제를 자동으로 읽어 줘요":"듣기 버튼을 눌러야 해요"}</dd>
+    </dl>
+  </div>
+  <div class="scene"><span class="bob">${DAVID(66,wear)}</span><div class="bubble"><b class="who">다윗</b><br>${esc(msg)}</div></div>
+  <button class="btn" id="go" style="align-self:center">시작!</button>`;
+  bindHud(home);speak(msg);
+  on("go",()=>{sfx("good");step()});
+}
+function heartsHtml(){if(!play.D.hearts)return"";return `<span class="hearts" id="hearts">${Array.from({length:play.D.hearts},(_,k)=>`<span class="${k<play.hearts?"":"lost"}">♥</span>`).join("")}</span>`}
+function topBar(){const n=play.items.length;
+  return `<div class="top"><span class="ref">${play.li+1}단계</span><div class="bar"><i style="width:${play.i/n*100}%"></i></div><span class="count">${play.i+1}/${n}</span>${heartsHtml()}</div>
+  ${play.D.time&&play.items[play.i].kind==="q"?`<div class="timer" id="timer"><i style="width:100%"></i></div>`:""}`}
+function step(){stopTimer();const it=play.items[play.i];it.kind==="q"?question(it):recall(it)}
+function nextStep(){stopTimer();play.i++;play.i<play.items.length?step():levelResult()}
+/* 틀리면: 목숨 하나 줄이기. 다 쓰면 끝 */
+function hurt(){
+  play.combo=0;
+  if(!play.D.hearts)return false;
+  play.hearts--;const h=document.getElementById("hearts");
+  if(h){h.outerHTML=heartsHtml();document.getElementById("hearts").classList.add("hit")}
+  if(play.hearts<=0){play.over=true;stopTimer();setTimeout(gameOver,700);return true}
+  return false;
+}
+function runTimer(it){
+  if(!play.D.time)return;let left=play.D.time;stopTimer();
+  const bar=()=>{const t=document.getElementById("timer");if(!t)return;t.firstElementChild.style.width=(left/play.D.time*100)+"%";t.classList.toggle("low",left<=10)};
+  bar();
+  tick=setInterval(()=>{left--;bar();if(left===5)sfx("tap");
+    if(left<=0){stopTimer();sfx("bad");toast("시간이 끝났어요!");it.first=false;if(!hurt())runTimer(it)}},1000);
+}
+function trimChoices(q){
+  const idx=q.c.map((_,i)=>i);
+  return [q.a,...shuffle(idx.filter(i=>i!==q.a)).slice(0,play.D.ch-1)].sort((a,b)=>a-b);
+}
+function question(it){
+  const q=play.L.qs[it.qi],D=play.D;
+  it.first=true;it.memFirst=true;it.keep=it.keep||trimChoices(q);
+  const keep=it.keep;
+  let body;
+  if(it.fix){
+    if(it.wrongI==null)it.wrongI=shuffle(keep.filter(i=>i!==q.a))[0];
+    const toks=q.s.replace("(   )","\u0001").split(" ");
+    body=`<p class="ask"><b style="color:var(--fire)">낱말 고치기!</b> 이 문장에서 잘못 쓴 낱말을 찾아 누르세요.</p>
+      <div class="sentence" id="toks">${toks.map(t=>t.includes("\u0001")
+        ?`<button class="tok" data-t="1" id="blank">${esc(t.replace("\u0001",q.c[it.wrongI]))}</button>`
+        :`<button class="tok" data-t="0">${esc(t)}</button>`).join(" ")}</div>
+      <div id="fixArea"></div>`;
+  }else{
+    const long=q.c.some(c=>c.length>9);
+    body=`<p class="ask">${esc(q.ask||"문장의 빈칸에 들어갈 가장 알맞은 말을 고르세요.")}</p>
+      <div class="sentence">${isBlank(q)?esc(q.s).replace(BL,'<span class="blank" id="blank">?</span>'):ul(q.s)}</div>
+      <div class="choices ${long?"one":""}" id="ch">${keep.map((i,k)=>`<button class="choice ${long?"mean":""}" data-i="${i}"><span class="n">${k+1}</span>${esc(q.c[i])}</button>`).join("")}</div>`;
+  }
+  app.innerHTML=`${hud("단계 지도")}${topBar()}
+  <div class="scene"><span class="bob">${DAVID(62,wear)}</span><div class="bubble"><button class="say" id="sStory">듣기</button>
+    <b class="who">${esc(q.who)} 이야기</b> <span class="ref">${esc(q.ref)}</span><br>${esc(q.story)}</div></div>
+  <div class="card">
+    <div class="qhead"><span class="qno">${play.retry?"다시 도전":it.fix?"고치기 문제":"문제"}</span>${play.combo>=2?`<span class="combo">${play.combo}연속!</span>`:""}
+      <span class="sp"></span><button class="say" id="sQ">문장 듣기</button></div>
+    ${body}
+    ${D.hint!==0?`<button class="hintbtn" id="hintBtn">힌트 보기${D.hint==="free"?"":` (달란트 ${D.hint}개)`}</button><div id="hint"></div>`:""}
+  </div><div id="fb"></div>`;
+  bindHud(()=>{stopTimer();home()});
+  const sentenceSay=it.fix?q.s.replace(BL,q.c[it.wrongI]):(q.ask?q.ask+" ":"")+plain(q.s).replace(BL,"빈칸")+". 보기는 "+keep.map((i,k)=>(k+1)+"번 "+q.c[i]).join(", ");
+  on("sStory",()=>speak(q.story));on("sQ",()=>speak(sentenceSay));
+  on("hintBtn",()=>{
+    if(D.hint!=="free"){if(talents<D.hint){sfx("bad");toast(`달란트가 ${D.hint}개 필요해요`);return}talents-=D.hint;save();document.getElementById("talN").textContent=talents}
+    sfx("flip");document.getElementById("hintBtn").remove();
+    document.getElementById("hint").innerHTML=`<div class="hintbox">${keep.map(i=>`<span><b>${esc(q.lab?(i+1)+"번":NAME(q.w[i]))}</b>: ${esc(M(q.w[i]))}</span>`).join("")}</div>`;
+    speak(keep.map(i=>`${q.lab?(i+1)+"번":NAME(q.w[i])}는 ${M(q.w[i])}`).join(" "));
+  });
+  if(it.fix){
+    app.querySelectorAll("#toks .tok").forEach(b=>b.onclick=()=>{
+      if(play.over)return;
+      if(b.dataset.t!=="1"){sfx("bad");b.classList.add("no");setTimeout(()=>b.classList.remove("no"),400);it.first=false;if(!hurt())speak("그 낱말은 맞게 썼어. 다시 찾아 봐!");return}
+      sfx("good");b.classList.add("found");app.querySelectorAll("#toks .tok").forEach(x=>x.disabled=true);
+      const opts=shuffle(keep.filter(i=>i!==it.wrongI));
+      document.getElementById("fixArea").innerHTML=`<p class="ask">찾았어! '${esc(q.c[it.wrongI])}' 대신 들어갈 알맞은 말은?</p>
+        <div class="choices" id="ch">${opts.map((i,k)=>`<button class="choice" data-i="${i}"><span class="n">${k+1}</span>${esc(q.c[i])}</button>`).join("")}</div>`;
+      speak(`찾았어! ${q.c[it.wrongI]} 대신 들어갈 말은?`);
+      app.querySelectorAll("#ch .choice").forEach(c=>c.onclick=()=>pick(it,q,+c.dataset.i,c));
+    });
+  }else app.querySelectorAll("#ch .choice").forEach(b=>b.onclick=()=>pick(it,q,+b.dataset.i,b));
+  if(D.auto)speak(q.story);
+  runTimer(it);
+}
+function pick(it,q,i,btn){
+  if(play.over)return;
+  const fb=document.getElementById("fb");
+  if(i!==q.a){
+    sfx("bad");btn.classList.add("no");btn.disabled=true;it.first=false;
+    if(hurt())return;
+    const wd=q.w[i],nm2=q.lab?`이 문장의 '${q.lab}'`:`'${NAME(wd)}'`;
+    fb.innerHTML=play.D.info
+      ?`<div class="panel bad"><div class="scene">${JONATHAN(50)}<div style="flex:1;min-width:0"><h2>앗, 다시 생각해 보자!</h2>
+        <p><b>${esc(nm2)}</b>는 "${esc(M(wd))}"라는 뜻이야.</p>${isBlank(q)?`<p>"${esc(q.s.replace(BL,q.c[i]))}" 이 문장, 말이 될까?</p>`:""}</div></div></div>`
+      :`<div class="panel bad"><h2>아니야! 다시 골라 봐.</h2></div>`;
+    speak(play.D.info?`${nm2}는 ${M(wd)} 라는 뜻이야. 다시 골라 봐!`:"아니야! 다시 골라 봐.");
+    return;
+  }
+  stopTimer();
+  btn.classList.add("ok");app.querySelectorAll("#ch .choice").forEach(b=>b.disabled=true);
+  const bl=document.getElementById("blank");if(bl){bl.textContent=q.c[q.a];bl.classList.add("pop")}
+  if(it.fix){bl.classList.remove("found");bl.style.borderColor="var(--ok)";bl.style.background="#DDF3E3"}
+  if(it.first){play.combo++;play.maxCombo=Math.max(play.maxCombo,play.combo);const g=(play.combo>=5?3:play.combo>=3?2:1)+(play.li>=6?1:0);play.earned+=g;setTimeout(()=>addTal(g,btn),200);
+    play.combo>=3?sfx("combo",play.combo):sfx("good");const r=btn.getBoundingClientRect();confetti(play.combo>=3?60:30,r.left+r.width/2,r.top)}
+  else sfx("good");
+  meanQuiz(it,q);
+}
+/* 정답 → 그 낱말 뜻 한 번 더 찾기 → 설명과 비교 */
+function meanQuiz(it,q){
+  const w=q.w[q.a],n=play.D.mean,fb=document.getElementById("fb");
+  let others=shuffle([...new Set(q.w)].filter(x=>x!==w));
+  if(others.length<n-1)others=others.concat(shuffle(Object.keys(DICT).filter(x=>x!==w&&!q.w.includes(x)&&!x.includes(":"))));
+  const opts=shuffle([w,...others.slice(0,n-1)]);
+  const askTxt=q.lab?`밑줄 친 '${q.lab}'은(는) 이 문장에서 무슨 뜻일까?`:`'${q.c[q.a]}'(${NAME(w)})는 무슨 뜻일까?`;
+  fb.innerHTML=`<div class="panel think" id="mq">
+    <div class="scene">${JONATHAN(50)}<div style="flex:1;min-width:0"><h2>정답! 그런데 잠깐!</h2>
+      <p><b>${esc(askTxt)}</b> 뜻까지 맞혀야 진짜 탐험대원이야.</p></div></div>
+    <div class="choices one" id="mc">${opts.map(o=>`<button class="choice mean" data-w="${o}">${esc(M(o))}</button>`).join("")}</div></div>`;
+  setTimeout(()=>document.getElementById("mq").scrollIntoView({behavior:"smooth",block:"start"}),150);
+  speak(`정답! 그런데 잠깐! ${askTxt}`);
+  app.querySelectorAll("#mc .choice").forEach(b=>b.onclick=()=>{
+    if(play.over)return;
+    if(b.dataset.w!==w){
+      sfx("bad");b.classList.add("no");b.disabled=true;it.memFirst=false;master(w,-1);
+      if(!q.lab&&q.w.includes(b.dataset.w))b.insertAdjacentHTML("beforeend",`<span class="x">이건 '${esc(NAME(b.dataset.w))}'의 뜻이에요</span>`);
+      if(hurt())return;
+      speak("아니야. 다시 골라 봐!");return}
+    b.classList.add("ok");app.querySelectorAll("#mc .choice").forEach(x=>x.disabled=true);sfx("good");
+    const perfect=it.first&&it.memFirst;
+    if(it.memFirst){master(w,1);play.earned+=1;addTal(1,b)}
+    if(perfect)play.perfect++;else play.wrong.push(it.qi);
+    const cheer=perfect?(play.combo>=3?`${play.combo}연속! 말씀 박사!`:["딩동댕! 낱말도 뜻도 정답!","우와, 뜻까지 알고 있네!","역시 "+nm()+"!"][Math.floor(Math.random()*3)]):"맞았어! 이제 확실히 알겠지?";
+    const rows=it.keep.map(i=>`<div class="${i===q.a?"right":""}"><b style="${q.lab?"font-size:15px;font-family:var(--body)":""}">${esc(q.lab?q.c[i]:q.c[i])}</b><span>${esc(M(q.w[i]))}${i!==q.a&&isBlank(q)?`<span style="display:block;color:var(--no);font-size:14px">"${esc(q.s.replace(BL,q.c[i]))}" → 이상해요</span>`:""}</span></div>`).join("");
+    const title=q.lab?"같은 낱말이라도 뜻이 달라요":q.ask===ASK_SYN?"뜻이 비슷한 말과 아닌 말":q.ask===ASK_ANT?"반대말과 아닌 말":"보기마다 뜻이 달라요";
+    document.getElementById("mq").insertAdjacentHTML("afterend",`<div class="panel good">
+      <h2>${esc(cheer)}</h2>
+      <p><b>${esc(q.lab||NAME(w))}</b>: ${esc(M(w))}</p><p>예) ${esc(EX(w))}</p>
+      <p>"${esc(filled(q))}" <span class="ref">${esc(q.ref)}</span></p>
+      <p style="font-family:var(--display);color:var(--olive-dark)">${title}</p>
+      <div class="cmp" style="${q.lab?"":""}">${rows}</div>
+      <button class="btn" id="next" style="align-self:flex-end">${play.i+1<play.items.length?"다음":"결과 보기"}</button></div>`);
+    speak(`${cheer} ${q.lab||NAME(w)}. ${M(w)}`);
+    on("next",()=>{sfx("tap");nextStep()});
+    setTimeout(()=>document.getElementById("next").scrollIntoView({behavior:"smooth",block:"nearest"}),100);
+  });
+}
+/* 단계 끝: 다시 떠올리기 (뜻만 보고 낱말 찾기) */
+function recall(it){
+  let opts=shuffle([...new Set(it.set)].filter(x=>x!==it.w));
+  if(play.li>=7)opts=opts.concat(shuffle(Object.keys(DICT).filter(x=>x!==it.w&&!it.set.includes(x)&&!x.includes(":"))));
+  opts=shuffle([it.w,...opts.slice(0,Math.min(play.D.mean,5)-1)]);
+  const msg=it.old?"앞 단계에서 배운 낱말이야! 기억나?":"이번 단계에서 배운 낱말이야. 뜻만 보고 찾아 봐!";
+  app.innerHTML=`${hud("단계 지도")}${topBar()}
+  <div class="scene">${JONATHAN(58)}<div class="bubble"><button class="say" id="sR">듣기</button><b class="who">요나단</b><br>${msg}</div></div>
+  <div class="card"><div class="qhead"><span class="qno">다시 떠올리기</span><span class="sp"></span><span style="color:var(--gold)">${mStars(it.w)}</span></div>
+    <p class="ask">이 뜻을 가진 낱말을 고르세요.</p>
+    <div class="sentence" style="font-size:21px">"${esc(M(it.w))}"</div>
+    <div class="choices">${opts.map(o=>`<button class="choice" data-w="${o}">${esc(o)}</button>`).join("")}</div></div>
+  <div id="fb"></div>`;
+  bindHud(home);
+  const say=`${msg} ${M(it.w)} 이런 뜻을 가진 낱말은?`;speak(say);on("sR",()=>speak(say));
+  let first=true;
+  app.querySelectorAll(".card .choice").forEach(b=>b.onclick=()=>{
+    if(play.over)return;
+    if(b.dataset.w!==it.w){sfx("bad");b.classList.add("no");b.disabled=true;if(first)master(it.w,-1);first=false;
+      if(play.D.info)b.insertAdjacentHTML("beforeend",`<span class="x" style="font-family:var(--body)">${esc(M(b.dataset.w))}</span>`);
+      if(hurt())return;speak("다시 골라 봐!");return}
+    b.classList.add("ok");app.querySelectorAll(".card .choice").forEach(x=>x.disabled=true);sfx("good");
+    if(first){play.perfect++;master(it.w,1);play.earned++;addTal(1,b)}
+    document.getElementById("fb").innerHTML=`<div class="panel good"><h2>${first?"정답!":"맞았어!"} ${esc(it.w)}</h2>
+      <p>${esc(M(it.w))}</p><p>예) ${esc(EX(it.w))}</p>
+      <button class="btn" id="next" style="align-self:flex-end">${play.i+1<play.items.length?"다음":"결과 보기"}</button></div>`;
+    speak(`${it.w}. ${M(it.w)}`);on("next",()=>{sfx("tap");nextStep()});
+  });
+}
+function gameOver(){
+  stopTimer();const li=play.li;
+  app.innerHTML=`${hud()}
+  <div class="result"><div class="chars"><span class="bob">${DAVID(80,wear)}</span>${JONATHAN(70)}</div>
+   <h1 style="font-size:30px;color:var(--no)">하트를 다 썼어요</h1>
+   <p style="max-width:30em;line-height:1.6">${li+1}단계는 쉽지 않지? 괜찮아! 다시 도전해 보자.</p>
+   <p style="color:var(--soft)">${play.items.length}개 중 ${play.i}개까지 왔어요</p>
+   <div class="actions"><button class="btn" id="again">다시 도전!</button>
+     ${li>0?`<button class="btn ghost" id="prev">${li}단계 연습하기</button>`:""}
+     <button class="btn ghost" id="toMap">단계 지도</button></div></div>`;
+  bindHud();sfx("bad");speak("하트를 다 썼어. 괜찮아! 다시 도전해 보자.");
+  on("again",()=>{sfx("tap");startLevel(li)});on("prev",()=>{sfx("tap");startLevel(li-1)});on("toMap",()=>{sfx("tap");home()});
+}
+function levelResult(){
+  stopTimer();
+  const t=play.items.length,li=play.li;
+  let st=0,bonus=0,best=false,unlocked=false;
+  if(!play.retry){st=starsFor(play.perfect,t);bonus=(st===3?5:st===2?3:1)+li;
+    const before=stars[li]||0;if(st>before){unlocked=before===0&&li+1<LEVELS.length;stars[li]=st;best=true;save()}}
+  else if(!play.wrong.length)bonus=2;
+  const msg=play.retry?(play.wrong.length?"조금만 더! 뜻을 소리 내어 따라 말해 보자.":"헷갈렸던 낱말 뜻을 다 기억했어!")
+    :li===LEVELS.length-1&&st>0?`${call()}, 10단계까지 다 깼어! 진짜 말씀 낱말 박사야!`
+    :st===3?`${call()}, 낱말도 뜻도 다 알았구나!`:st===2?"잘했어! 헷갈린 것만 다시 하면 별 3개!":"괜찮아, 헷갈린 것을 한 번 더 해 보자!";
+  app.innerHTML=`${hud()}
+  <div class="result"><div class="chars"><span class="bob">${DAVID(80,wear)}</span>${JONATHAN(70)}</div>
+   ${play.retry?`<h1 style="font-size:30px;color:var(--olive-dark)">다시 도전 끝!</h1>`:`<span class="ref" style="font-size:17px">${li+1}단계 결과</span><div class="big-stars">${[0,1,2].map(k=>`<span class="${k<st?"":"off"}" style="animation-delay:${.3+k*.35}s">★</span>`).join("")}</div>`}
+   ${best&&st?`<span class="combo pop">최고 기록!</span>`:""}
+   ${unlocked?`<span class="combo pop" style="background:var(--sky)">${li+2}단계가 열렸어요! 더 어려워져요</span>`:""}
+   <div class="tally"><span>낱말과 뜻 모두 한 번에</span><span>${play.perfect}/${t}</span>
+     ${play.D.hearts?`<span>남은 하트</span><span>${play.hearts}/${play.D.hearts}</span>`:""}
+     <span>최고 연속</span><span>${play.maxCombo}번</span><span>받은 달란트</span><span>${play.earned}개</span>
+     <span>${play.retry?"다 맞힌 보너스":"단계 보너스"}</span><span>${bonus}개</span>
+     <span class="sum">가진 달란트</span><span class="sum" id="totN">${talents}개</span></div>
+   <p style="max-width:30em;line-height:1.6">${esc(msg)}</p>
+   <div class="actions">
+     ${play.wrong.length?`<button class="btn" id="retry">헷갈린 문제 다시 (${play.wrong.length})</button>`:""}
+     ${li+1<LEVELS.length&&isOpen(li+1)?`<button class="btn ${play.wrong.length?"ghost":""}" id="nextLv">${li+2}단계로!</button>`:""}
+     <button class="btn ghost" id="again">이 단계 다시</button>
+     <button class="btn gold" id="toShop">${COIN(22)} 다윗 꾸미기</button>
+     <button class="btn ghost" id="toMap">단계 지도</button></div></div>`;
+  bindHud();
+  if(!play.retry)for(let k=0;k<st;k++)setTimeout(()=>sfx("star",k),300+k*350);
+  setTimeout(()=>{if(bonus){addTal(bonus,document.getElementById("totN"));document.getElementById("totN").textContent=talents+"개"}
+    if(unlocked)setTimeout(()=>sfx("unlock"),400);
+    if(st===3||(play.retry&&!play.wrong.length)){sfx("fanfare");confetti(140)}},300+st*350);
+  speak(msg+(unlocked?` ${li+2}단계가 열렸어! 더 어려워져!`:""));
+  const wr=play.wrong.slice();
+  on("retry",()=>{sfx("tap");startLevel(li,wr)});on("nextLv",()=>{sfx("tap");startLevel(li+1)});
+  on("again",()=>{sfx("tap");startLevel(li)});on("toShop",()=>{sfx("tap");shop()});on("toMap",()=>{sfx("tap");home()});
+}
+
+/* ================= 외운 낱말 보기 ================= */
+function dict(){
+  hush();
+  const seen=new Set();
+  const groups=LEVELS.map((L,i)=>({i,ws:[...new Set(L.qs.map(q=>q.w[q.a]))].filter(w=>!seen.has(w)&&seen.add(w))}));
+  const total=seen.size,known=[...seen].filter(w=>(mastery[w]||0)>=3).length;
+  app.innerHTML=`${hud("처음으로")}
+  <h1 style="font-size:30px;color:var(--olive-dark)">외운 낱말 보기</h1>
+  <p style="color:var(--soft)">뜻을 한 번에 떠올릴 때마다 별이 하나씩 늘어요. 별 3개면 완전히 외운 낱말! 지금 ${total}개 중 <b>${known}개</b>. 누르면 읽어 줘요.</p>
+  ${groups.filter(g=>g.ws.length).map(g=>`<div class="dgroup"><h3>${g.i+1}단계 ${isOpen(g.i)?"":"(잠김)"}</h3><div class="dict">
+    ${g.ws.map(w=>`<button class="dword" data-w="${w}"><b>${esc(NAME(w))}</b><span>${esc(M(w))}<br><small style="color:var(--soft)">예) ${esc(EX(w))}</small></span><em>${mStars(w)}</em></button>`).join("")}</div></div>`).join("")}`;
+  bindHud(home);
+  app.querySelectorAll(".dword").forEach(b=>b.onclick=()=>{sfx("tap");speak(`${NAME(b.dataset.w)}. ${M(b.dataset.w)} 예를 들면, ${EX(b.dataset.w)}`)});
+}
+
+/* ================= 다윗 꾸미기 ================= */
+function shop(){
+  hush();
+  app.innerHTML=`${hud("처음으로")}
+  <div class="shop"><h1 style="font-size:30px;color:var(--olive-dark)">다윗 꾸미기</h1>
+   <div class="stage"><span class="bob">${DAVID(130,wear)}</span></div>
+   <p style="color:var(--soft);text-align:center">문제를 맞히고 받은 달란트로 다윗의 물건을 모아요!</p>
+   <div class="items">${ITEMS.map(it=>{const have=owned.includes(it.id),onn=wear.includes(it.id);
+     return `<button class="item ${onn?"on":""} ${!have&&talents<it.price?"locked":""}" data-id="${it.id}">${DAVID(62,[it.id])}
+       <b>${esc(it.name)}</b><small>${esc(it.note)}</small>
+       <span class="price">${have?(onn?"갖고 있어요":"다시 들기"):`${COIN(18)} ${it.price}개`}</span></button>`}).join("")}</div></div>`;
+  bindHud(home);
+  app.querySelectorAll(".item").forEach(b=>b.onclick=()=>{
+    const it=ITEMS.find(i=>i.id===b.dataset.id);
+    if(owned.includes(it.id)){wear=wear.includes(it.id)?wear.filter(x=>x!==it.id):[...wear,it.id];save();sfx("tap");shop()}
+    else if(talents>=it.price){talents-=it.price;owned.push(it.id);wear.push(it.id);save();sfx("buy");shop();confetti(80);
+      toast(`${it.name}을(를) 얻었어요!`);speak(`우와! ${it.name}! ${it.note.replace(/\(.*\)/,"")}`)}
+    else{sfx("bad");toast(`달란트가 ${it.price-talents}개 더 필요해요`)}
+  });
+}
+
+try{speechSynthesis.getVoices()}catch(e){}
+home();
+</script>

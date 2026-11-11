@@ -1,0 +1,131 @@
+# 말씀 낱말 탐험대 앱 APK를 GitHub가 만든다(2026-11-11, 업무 기록·관계 기록 앱과 같은 방식). 컴퓨터에 설치할 것 없음.
+# 게임 파일(말씀-낱말-탐험대.html)이나 android/ 를 고쳐 올리면 자동으로, 또는 Actions 탭에서 「Run workflow」로 만든다.
+name: android-apk
+
+on:
+  push:
+    paths: ['android/**', '.github/workflows/android.yml', '말씀-낱말-탐험대.html']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      # 게임은 드라이브의 파일 하나를 그대로 앱 안에 넣는다(고치지 않음)
+      - name: 게임 파일 넣기
+        run: cp "말씀-낱말-탐험대.html" android/app/src/main/assets/game.html
+      # 열쇠는 고정(기록 앱 공용 record). 없으면 멈춘다: 새 열쇠로 만들면 폰에 덮어 깔 수 없다.
+      - name: 서명 열쇠 꺼내기
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then echo "GitHub Secrets에 KEYSTORE_B64가 없어요"; exit 1; fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/record.p12"
+          echo "KEYSTORE_FILE=$RUNNER_TEMP/record.p12" >> "$GITHUB_ENV"
+      - name: APK 만들기
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: gradle -p android assembleRelease --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: word-quest-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+
+  # 가상 안드로이드 폰에 깔아서 켜 본다: 꺼지지 않는지, 읽어주기가 폰 음성으로 이어졌는지, 소리(WebAudio)가 켜지는지,
+  # 기록(localStorage)이 앱을 껐다 켜도 남는지. 하나라도 안 되면 실패로 표시한다.
+  smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: word-quest-apk
+      - name: KVM 켜기
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            adb install -r app-release.apk
+            adb logcat -c
+            adb shell am start -W -n app.wordquest/.MainActivity --ez selftest true
+            sleep 20
+            adb logcat -d -b crash > crash.txt || true
+            echo "===== crash ====="; cat crash.txt
+            if grep -q "FATAL EXCEPTION" crash.txt; then exit 1; fi
+            adb shell pidof app.wordquest || { echo "앱이 꺼져 있어요"; exit 1; }
+            adb logcat -d -s WordQuest:I > t1.txt || true
+            echo "===== 1번째 켬 ====="; cat t1.txt
+            grep -q 'ttsNative.\{0,6\}true' t1.txt || { echo "읽어주기가 폰 음성으로 이어지지 않았어요"; exit 1; }
+            grep -q 'home.\{0,6\}true' t1.txt || { echo "게임 첫 화면이 안 떴어요"; exit 1; }
+            if grep -q 'audioErr' t1.txt; then echo "소리(WebAudio)가 안 켜져요"; exit 1; fi
+            adb exec-out screencap -p > shot-home.png || true
+            # 앱을 완전히 껐다 켜도 기록이 남는지
+            adb shell am force-stop app.wordquest
+            adb logcat -c
+            adb shell am start -W -n app.wordquest/.MainActivity --ez selftest true
+            sleep 15
+            adb logcat -d -s WordQuest:I > t2.txt || true
+            echo "===== 2번째 켬 ====="; cat t2.txt
+            grep -q 'saved.\{0,6\}kept' t2.txt || { echo "앱을 다시 켜니 기록이 없어졌어요"; exit 1; }
+            echo "읽어주기·소리·기록 모두 됨"
+            # 인터넷을 끄고 켜 봐도 꺼지지 않는지
+            adb shell svc wifi disable; adb shell svc data disable; adb shell cmd connectivity airplane-mode enable || true
+            adb shell am force-stop app.wordquest
+            adb logcat -c
+            adb shell am start -W -n app.wordquest/.MainActivity
+            sleep 10
+            adb logcat -d -b crash > crash3.txt || true
+            echo "===== crash (인터넷 끔) ====="; cat crash3.txt
+            if grep -q "FATAL EXCEPTION" crash3.txt; then exit 1; fi
+            adb shell pidof app.wordquest || { echo "인터넷 끄니 앱이 꺼져 있어요"; exit 1; }
+            adb exec-out screencap -p > shot-offline.png || true
+            echo "인터넷 꺼도 앱이 켜져 있어요"
+      # 화면 사진: 모양 확인용
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: shot-*.png
+
+  # main에서 만들고 가상 폰 확인까지 통과하면, APK를 사이트(app/)에 올린다.
+  # 탭의 앱이 app/version.json을 보고 새 버전이면 스스로 받아서 업데이트한다. (플레이 스토어 없이 0원)
+  publish:
+    needs: smoke
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: word-quest-apk
+          path: dist
+      - name: 사이트에 올리기
+        run: |
+          mkdir -p app
+          cp dist/app-release.apk app/word-quest.apk
+          SHA=$(sha256sum app/word-quest.apk | cut -d' ' -f1)
+          printf '{"versionCode":%s,"apk":"/app/word-quest.apk","sha256":"%s"}\n' "$GITHUB_RUN_NUMBER" "$SHA" > app/version.json
+          git config user.name "word-quest-bot"
+          git config user.email "word-quest-bot@users.noreply.github.com"
+          git add -f app
+          git commit -m "앱 새 버전 올림 (${GITHUB_RUN_NUMBER})"
+          git pull --rebase -q origin main
+          git push origin HEAD:main
