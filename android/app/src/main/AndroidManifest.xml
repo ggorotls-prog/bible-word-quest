@@ -9,13 +9,6 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
-    <!-- 읽어주기: 폰의 음성 엔진(TextToSpeech)을 찾으려면 안드로이드 11부터 이게 있어야 한다 -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.TTS_SERVICE" />
-        </intent>
-    </queries>
-
     <application
         android:label="말씀 낱말 탐험대"
         android:icon="@mipmap/ic_launcher"

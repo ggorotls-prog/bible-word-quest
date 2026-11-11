@@ -9,23 +9,19 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.speech.tts.TextToSpeech;
-import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
 
 // 화면은 앱 안의 game.html(assets, 빌드할 때 드라이브의 「말씀-낱말-탐험대.html」을 그대로 복사).
-// 게임 파일은 고치지 않고, 앱이 문서 틀(doctype·charset·viewport)과 읽어주기 이어 주기(tts.js)만 앞에 붙여 띄운다.
+// 게임 파일은 고치지 않고, 앱이 문서 틀(doctype·charset·viewport)만 앞에 붙여 띄운다.
 // 소리(WebAudio)는 WebView가 그대로 낸다. 기록(localStorage)은 앱 안에 남는다(지우고 다시 깔면 사라짐).
 // 뒤로 가기: 화면의 「뒤로」 버튼 → 첫 화면 → 첫 화면에서만 앱 닫힘(새 앱 규칙, 2026-11-11).
 public class MainActivity extends Activity {
@@ -34,12 +30,6 @@ public class MainActivity extends Activity {
 
     private WebView web;
     private boolean loaded, backFromSecurity, selftest;
-    private TextToSpeech tts;
-    private volatile boolean ttsReady;
-    private volatile int ttsLang = -99;
-    private String pendingSpeak;
-    private float pendingRate = 1f, pendingPitch = 1f;
-    private boolean warnedNoVoice;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -51,7 +41,6 @@ public class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
 
         selftest = getIntent() != null && getIntent().getBooleanExtra("selftest", false);
-        startTts();
 
         web = new WebView(this);
         web.setBackgroundColor(Color.parseColor("#F6EBD3"));
@@ -62,7 +51,6 @@ public class MainActivity extends Activity {
         s.setAllowFileAccess(true);
         s.setMediaPlaybackRequiresUserGesture(false); // 효과음·음악
         s.setTextZoom(100);
-        web.addJavascriptInterface(new Bridge(), "NativeTTS");
         web.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView v, String url) {
                 loaded = true;
@@ -77,11 +65,10 @@ public class MainActivity extends Activity {
         askNotifyOnce();
     }
 
-    // 게임 앞에 문서 틀과 읽어주기 이어 주기를 붙인다(게임 글자는 그대로)
+    // 게임 앞에 문서 틀을 붙인다(게임 글자는 그대로)
     private String page() {
         return "<!doctype html><html lang=\"ko\"><head><meta charset=\"utf-8\">"
                 + "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,viewport-fit=cover\">"
-                + "<script>" + asset("tts.js") + "</script>"
                 + asset("game.html");
     }
 
@@ -97,69 +84,17 @@ public class MainActivity extends Activity {
         }
     }
 
-    // ---- 읽어주기: 폰의 음성 엔진 ----
-    private void startTts() {
-        tts = new TextToSpeech(getApplicationContext(), st -> {
-            if (st == TextToSpeech.SUCCESS && tts != null) {
-                ttsLang = tts.setLanguage(Locale.KOREAN);
-                tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                    @Override public void onStart(String id) {}
-                    @Override public void onDone(String id) { js("window.__ttsDone && __ttsDone()"); }
-                    @Override public void onError(String id) { js("window.__ttsDone && __ttsDone()"); }
-                });
-                ttsReady = true;
-                String p = pendingSpeak;
-                pendingSpeak = null;
-                if (p != null) say(p, pendingRate, pendingPitch);
-            }
-            Log.i(TAG, "selftest tts init=" + st + " lang=" + ttsLang);
-        });
-    }
-
-    private void say(String text, float rate, float pitch) {
-        if (!ttsReady) { pendingSpeak = text; pendingRate = rate; pendingPitch = pitch; return; }
-        if (ttsLang < 0) { warnNoVoice(); return; }
-        tts.setSpeechRate(rate);
-        tts.setPitch(pitch);
-        int r = tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "u" + System.nanoTime());
-        Log.i(TAG, "selftest tts speak=" + r);
-    }
-
-    // 한국어 목소리가 없을 때 한 번만 알린다
-    private void warnNoVoice() {
-        if (warnedNoVoice) return;
-        warnedNoVoice = true;
-        runOnUiThread(() -> Toast.makeText(this, "읽어주기 목소리(한국어)가 없어요. 설정 → 텍스트 음성 변환에서 한국어를 받아 주세요.", Toast.LENGTH_LONG).show());
-        js("window.__ttsDone && __ttsDone()");
-    }
-
-    private class Bridge {
-        @JavascriptInterface public void speak(String text, String lang, double rate, double pitch) {
-            say(text, (float) rate, (float) pitch);
-        }
-        @JavascriptInterface public void stop() {
-            pendingSpeak = null;
-            if (tts != null) try { tts.stop(); } catch (Exception ignored) {}
-        }
-    }
-
-    // 가상 폰 시험용(빌드의 smoke 단계): 읽어주기·소리·저장이 되는지 로그로 남긴다. 평소에는 안 돈다.
+    // 가상 폰 시험용(빌드의 smoke 단계): 소리·저장이 되는지 로그로 남긴다. 평소에는 안 돈다.
     private void runSelftest() {
         String code = "(function(){var r={};"
-                + "try{r.ttsNative=String(speechSynthesis.speak).indexOf('NativeTTS')>=0}catch(e){r.ttsErr=String(e)}"
                 + "try{var A=window.AudioContext||window.webkitAudioContext;var a=new A();r.audio=a.state;var o=a.createOscillator();o.connect(a.destination);o.start();o.stop(a.currentTime+.05)}catch(e){r.audioErr=String(e)}"
                 + "try{r.saved=localStorage.getItem('wq_selftest');localStorage.setItem('wq_selftest','kept')}catch(e){r.lsErr=String(e)}"
                 + "r.home=!!(document.getElementById('toShop')||document.querySelector('.pinpad'));"
                 + "r.pin=!!document.querySelector('.pinpad');"
                 + "try{var bb=JSON.parse(localStorage.getItem('mw2_bible')||'{}');r.seed=Object.keys(bb).filter(function(k){return bb[k]==='2026-11-10'}).length}catch(e){}"
                 + "try{r.vis=localStorage.getItem('wq_vis');localStorage.setItem('wq_vis','');document.addEventListener('visibilitychange',function(){localStorage.setItem('wq_vis',(localStorage.getItem('wq_vis')||'')+document.visibilityState+'-')})}catch(e){}"
-                + "try{speechSynthesis.speak(new SpeechSynthesisUtterance('말씀 낱말 탐험대'))}catch(e){r.speakErr=String(e)}"
                 + "return JSON.stringify(r)})()";
         web.postDelayed(() -> web.evaluateJavascript(code, v -> Log.i(TAG, "selftest result " + v)), 3000);
-    }
-
-    private void js(String code) {
-        runOnUiThread(() -> { if (web != null) web.evaluateJavascript(code, null); });
     }
 
     // 업데이트 알림이 보이게: 처음 한 번만 알림 허용을 묻는다(안드로이드 13부터)
@@ -191,11 +126,10 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    // 앱을 내리면 읽어주기·음악을 멈춘다
+    // 앱을 내리면 음악을 멈춘다
     @Override
     protected void onPause() {
         visible = false;
-        if (tts != null) try { tts.stop(); } catch (Exception ignored) {}
         // 게임 시간: 내리는 순간 남은 시간을 저장한다(게임의 saveTime). 내려가 있는 동안은 타이머가 멈춰 시간이 줄지 않는다.
         if (web != null && loaded) web.evaluateJavascript("try{typeof saveTime==='function'&&saveTime()}catch(e){}", null);
         if (web != null) { web.onPause(); web.pauseTimers(); }
@@ -204,7 +138,6 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (tts != null) { try { tts.shutdown(); } catch (Exception ignored) {} tts = null; }
         if (web != null) { web.destroy(); web = null; }
         super.onDestroy();
     }

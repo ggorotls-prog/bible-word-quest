@@ -655,11 +655,6 @@ let bgmTimer=null,stepN=0;
 function bgmStart(){if(bgmTimer||!bgmOn||!ctx())return;
   bgmTimer=setInterval(()=>{const t=now()+.02;note(MEL[stepN%16],t,.5,"triangle",.04);if(stepN%2===0)note(BASS[(stepN/2)%8],t,.8,"sine",.04);stepN++},380)}
 function bgmStop(){clearInterval(bgmTimer);bgmTimer=null}
-/* 읽어주기 뺌(2026-11-11 룡: AI 목소리라서). 효과음·음악만. */
-function speak(text){return;try{const ss=window.speechSynthesis;if(!ss)return;ss.cancel();
-  const u=new SpeechSynthesisUtterance(text.replace(/\(\s*\)/g,"무엇").replace(/['()]/g," "));u.lang="ko-KR";u.rate=.9;u.pitch=1.1;
-  const v=ss.getVoices().find(v=>/ko/i.test(v.lang));if(v)u.voice=v;ss.speak(u)}catch(e){}}
-function hush(){try{speechSynthesis.cancel()}catch(e){}}
 document.addEventListener("pointerdown",()=>{ctx();bgmStart()});
 
 /* ================= 효과 ================= */
@@ -700,7 +695,7 @@ function bindHud(onBack){
   const t=(id,fn)=>{const b=document.getElementById(id);b.onclick=()=>{fn();b.classList.toggle("off");sfx("tap")}};
   t("tSfx",()=>{sfxOn=!sfxOn;store.set("sfx",sfxOn)});
   t("tBgm",()=>{bgmOn=!bgmOn;store.set("bgm",bgmOn);bgmOn?bgmStart():bgmStop()});
-  on("backBtn",()=>{sfx("tap");hush();onBack()});
+  on("backBtn",()=>{sfx("tap");onBack()});
 }
 function addTal(n,el){if(n<=0)return;talents+=n;save();const t=document.getElementById("talN");if(t)t.textContent=talents;
   const p=document.getElementById("purse");if(p){p.classList.remove("bump");void p.offsetWidth;p.classList.add("bump")}
@@ -708,7 +703,6 @@ function addTal(n,el){if(n<=0)return;talents+=n;save();const t=document.getEleme
 
 /* ================= 처음 화면 + 단계 지도 ================= */
 function home(){
-  hush();
   const next=LEVELS.findIndex((_,i)=>!(S()[i]>0));
   const cOpen=challengeOpen();
   const nx=ITEMS.find(i=>!owned.includes(i.id));
@@ -751,9 +745,9 @@ function home(){
 /* ================= 단계별 난이도 =================
    hearts: 목숨(0=없음) · time: 문제당 초(0=없음) · hint: "free"/달란트 값/0(없음)
    ch: 문제 보기 수 상한 · mean: 뜻 찾기 보기 수 · fix: 틀린 낱말 고치기 문제 비율
-   auto: 문제 자동 읽어주기 · info: 틀린 보기 뜻 알려주기 */
-const DIFF=LEVELS.map(()=>({hearts:3,time:45,hint:2,ch:4,mean:4,fix:.3,auto:false,info:false}));
-const PRACTICE={hearts:0,time:0,hint:"free",auto:true,info:true};
+   info: 틀린 보기 뜻 알려주기 */
+const DIFF=LEVELS.map(()=>({hearts:3,time:45,hint:2,ch:4,mean:4,fix:.3,info:false}));
+const PRACTICE={hearts:0,time:0,hint:"free",info:true};
 const getD=i=>mode==="challenge"?DIFF[i]:{...DIFF[i],...PRACTICE};
 const BL="(   )",isBlank=q=>q.s.includes(BL);
 const ul=s=>esc(s).replace(/\[\[(.+?)\]\]/g,'<u style="text-decoration-thickness:3px;text-decoration-color:var(--gold)">$1</u>');
@@ -795,12 +789,11 @@ function levelIntro(){
       <dt>보기</dt><dd class="${nw("ch")} ${nw("mean")}">낱말 ${D.ch}개까지 · 뜻 ${D.mean}개</dd>
       <dt>낱말 고치기</dt><dd class="${nw("fix")}">${D.fix?`문제의 ${Math.round(D.fix*100)}%`:"없음"}</dd>
       <dt>틀렸을 때</dt><dd class="${nw("info")}">${D.info?"그 낱말 뜻을 알려 줘요":"알려 주지 않아요"}</dd>
-      <dt>읽어주기</dt><dd class="${nw("auto")}">${D.auto?"문제를 자동으로 읽어 줘요":"듣기 버튼을 눌러야 해요"}</dd>
     </dl>
   </div>
   <div class="scene"><span class="bob">${DAVID(66,wear)}</span><div class="bubble"><b class="who">다윗</b><br>${esc(msg)}</div></div>
   <button class="btn" id="go" style="align-self:center">시작!</button>`;
-  bindHud(home);speak(msg);
+  bindHud(home);
   on("go",()=>{sfx("good");step()});
 }
 function heartsHtml(){if(!play.D.hearts)return"";return `<span class="hearts" id="hearts">${Array.from({length:play.D.hearts},(_,k)=>`<span class="${k<play.hearts?"":"lost"}">♥</span>`).join("")}</span>`}
@@ -858,27 +851,24 @@ function question(it){
     ${D.hint!==0?`<button class="hintbtn" id="hintBtn">힌트 보기${D.hint==="free"?"":` (달란트 ${D.hint}개)`}</button><div id="hint"></div>`:""}
   </div><div id="fb"></div>`;
   bindHud(()=>{stopTimer();home()});
-  const sentenceSay=it.fix?q.s.replace(BL,q.c[it.wrongI]):(q.ask?q.ask+" ":"")+plain(q.s).replace(BL,"빈칸")+". 보기는 "+keep.map((i,k)=>(k+1)+"번 "+q.c[i]).join(", ");
-  on("sStory",()=>speak(q.story));on("sQ",()=>speak(sentenceSay));
   on("hintBtn",()=>{
     if(D.hint!=="free"){if(talents<D.hint){sfx("bad");toast(`달란트가 ${D.hint}개 필요해요`);return}talents-=D.hint;save();document.getElementById("talN").textContent=talents}
     sfx("flip");document.getElementById("hintBtn").remove();
     document.getElementById("hint").innerHTML=`<div class="hintbox">${keep.map(i=>`<span><b>${esc(q.lab?(i+1)+"번":NAME(q.w[i]))}</b>: ${esc(M(q.w[i]))}</span>`).join("")}</div>`;
-    speak(keep.map(i=>`${q.lab?(i+1)+"번":NAME(q.w[i])}는 ${M(q.w[i])}`).join(" "));
+    
   });
   if(it.fix){
     app.querySelectorAll("#toks .tok").forEach(b=>b.onclick=()=>{
       if(play.over)return;
-      if(b.dataset.t!=="1"){sfx("bad");b.classList.add("no");setTimeout(()=>b.classList.remove("no"),400);it.first=false;if(!hurt())speak("그 낱말은 맞게 썼어. 다시 찾아 봐!");return}
+      if(b.dataset.t!=="1"){sfx("bad");b.classList.add("no");setTimeout(()=>b.classList.remove("no"),400);it.first=false;hurt();return}
       sfx("good");b.classList.add("found");app.querySelectorAll("#toks .tok").forEach(x=>x.disabled=true);
       const opts=shuffle(keep.filter(i=>i!==it.wrongI));
       document.getElementById("fixArea").innerHTML=`<p class="ask">찾았어! '${esc(q.c[it.wrongI])}' 대신 들어갈 알맞은 말은?</p>
         <div class="choices" id="ch">${opts.map((i,k)=>`<button class="choice" data-i="${i}"><span class="n">${k+1}</span>${esc(q.c[i])}</button>`).join("")}</div>`;
-      speak(`찾았어! ${q.c[it.wrongI]} 대신 들어갈 말은?`);
+      
       app.querySelectorAll("#ch .choice").forEach(c=>c.onclick=()=>pick(it,q,+c.dataset.i,c));
     });
   }else app.querySelectorAll("#ch .choice").forEach(b=>b.onclick=()=>pick(it,q,+b.dataset.i,b));
-  if(D.auto)speak(q.story);
   runTimer(it);
 }
 function pick(it,q,i,btn){
@@ -892,7 +882,7 @@ function pick(it,q,i,btn){
       ?`<div class="panel bad"><div class="scene">${JONATHAN(50)}<div style="flex:1;min-width:0"><h2>앗, 다시 생각해 보자!</h2>
         <p><b>${esc(nm2)}</b>는 "${esc(M(wd))}"라는 뜻이야.</p>${isBlank(q)?`<p>"${esc(q.s.replace(BL,q.c[i]))}" 이 문장, 말이 될까?</p>`:""}</div></div></div>`
       :`<div class="panel bad"><h2>아니야! 다시 골라 봐.</h2></div>`;
-    speak(play.D.info?`${nm2}는 ${M(wd)} 라는 뜻이야. 다시 골라 봐!`:"아니야! 다시 골라 봐.");
+    
     return;
   }
   stopTimer();
@@ -916,33 +906,21 @@ function meanQuiz(it,q){
       <p><b>${esc(askTxt)}</b> 뜻까지 맞혀야 진짜 탐험대원이야.</p></div></div>
     <div class="choices one" id="mc">${opts.map(o=>`<button class="choice mean" data-w="${o}">${esc(M(o))}</button>`).join("")}</div></div>`;
   setTimeout(()=>document.getElementById("mq").scrollIntoView({behavior:"smooth",block:"start"}),150);
-  speak(`정답! 그런데 잠깐! ${askTxt}`);
+  
   app.querySelectorAll("#mc .choice").forEach(b=>b.onclick=()=>{
     if(play.over)return;
     if(b.dataset.w!==w){
       sfx("bad");b.classList.add("no");b.disabled=true;it.memFirst=false;master(w,-1);
       if(!q.lab&&q.w.includes(b.dataset.w))b.insertAdjacentHTML("beforeend",`<span class="x">이건 '${esc(NAME(b.dataset.w))}'의 뜻이에요</span>`);
       if(hurt())return;
-      speak("아니야. 다시 골라 봐!");return}
+      return}
     b.classList.add("ok");app.querySelectorAll("#mc .choice").forEach(x=>x.disabled=true);sfx("good");
     const perfect=it.first&&it.memFirst;
     const mg=(it.memFirst?2:1)*(mode==="challenge"?2:1);
     if(it.memFirst)master(w,1);play.earned+=mg;addTal(mg,b);
     if(perfect)play.perfect++;else play.wrong.push(it.qi);
-    const cheer=perfect?(play.combo>=3?`${play.combo}연속! 말씀 박사!`:["딩동댕! 낱말도 뜻도 정답!","우와, 뜻까지 알고 있네!","역시 "+nm()+"!"][Math.floor(Math.random()*3)]):"맞았어! 이제 확실히 알겠지?";
-    const rows=it.keep.map(i=>`<div class="${i===q.a?"right":""}"><b style="${q.lab?"font-size:15px;font-family:var(--body)":""}">${esc(q.lab?q.c[i]:q.c[i])}</b><span>${esc(M(q.w[i]))}${i!==q.a&&isBlank(q)?`<span style="display:block;color:var(--no);font-size:14px">"${esc(q.s.replace(BL,q.c[i]))}" → 이상해요</span>`:""}</span></div>`).join("");
-    const title=q.lab?"같은 낱말이라도 뜻이 달라요":q.ask===ASK_SYN?"뜻이 비슷한 말과 아닌 말":q.ask===ASK_ANT?"반대말과 아닌 말":"보기마다 뜻이 달라요";
-    document.getElementById("mq").insertAdjacentHTML("afterend",`<div class="panel good">
-      <h2>${esc(cheer)}</h2>
-      <span class="gain" style="display:flex;align-items:center;gap:4px">뜻 정답! ${COIN(20)} 달란트 +${mg}</span>
-      <p><b>${esc(q.lab||NAME(w))}</b>: ${esc(M(w))}</p><p>예) ${esc(EX(w))}</p>
-      <p>"${esc(filled(q))}" <span class="ref">${esc(q.ref)}</span></p>
-      <p style="font-family:var(--display);color:var(--olive-dark)">${title}</p>
-      <div class="cmp" style="${q.lab?"":""}">${rows}</div>
-      <button class="btn" id="next" style="align-self:flex-end">${play.i+1<play.items.length?"다음":"결과 보기"}</button></div>`);
-    speak(`${cheer} ${q.lab||NAME(w)}. ${M(w)}`);
-    on("next",()=>{sfx("tap");nextStep()});
-    setTimeout(()=>document.getElementById("next").scrollIntoView({behavior:"smooth",block:"nearest"}),100);
+    /* 딩동댕 설명 칸 없이 바로 다음 문제(2026-11-11 룡: 아이가 「다음」만 누르고 넘어감) */
+    const pl=play;setTimeout(()=>{if(play===pl&&!play.over&&document.getElementById("mc"))nextStep()},1100);
   });
 }
 /* 단계 끝: 다시 떠올리기 (뜻만 보고 낱말 찾기) */
@@ -959,19 +937,18 @@ function recall(it){
     <div class="choices">${opts.map(o=>`<button class="choice" data-w="${o}">${esc(o)}</button>`).join("")}</div></div>
   <div id="fb"></div>`;
   bindHud(home);
-  const say=`${msg} ${M(it.w)} 이런 뜻을 가진 낱말은?`;speak(say);on("sR",()=>speak(say));
   let first=true;
   app.querySelectorAll(".card .choice").forEach(b=>b.onclick=()=>{
     if(play.over)return;
     if(b.dataset.w!==it.w){sfx("bad");b.classList.add("no");b.disabled=true;if(first)master(it.w,-1);first=false;
       if(play.D.info)b.insertAdjacentHTML("beforeend",`<span class="x" style="font-family:var(--body)">${esc(M(b.dataset.w))}</span>`);
-      if(hurt())return;speak("다시 골라 봐!");return}
+      if(hurt())return;return}
     b.classList.add("ok");app.querySelectorAll(".card .choice").forEach(x=>x.disabled=true);sfx("good");
     if(first){play.perfect++;master(it.w,1);play.earned++;addTal(1,b)}
     document.getElementById("fb").innerHTML=`<div class="panel good"><h2>${first?"정답!":"맞았어!"} ${esc(it.w)}</h2>
       <p>${esc(M(it.w))}</p><p>예) ${esc(EX(it.w))}</p>
       <button class="btn" id="next" style="align-self:flex-end">${play.i+1<play.items.length?"다음":"결과 보기"}</button></div>`;
-    speak(`${it.w}. ${M(it.w)}`);on("next",()=>{sfx("tap");nextStep()});
+    on("next",()=>{sfx("tap");nextStep()});
   });
 }
 function gameOver(){
@@ -984,7 +961,7 @@ function gameOver(){
    <div class="actions"><button class="btn" id="again">다시 도전!</button>
      ${li>0?`<button class="btn ghost" id="prev">${li}단계 연습하기</button>`:""}
      <button class="btn ghost" id="toMap">단계 지도</button></div></div>`;
-  bindHud();sfx("bad");speak("하트를 다 썼어. 괜찮아! 다시 도전해 보자.");
+  bindHud();sfx("bad");
   on("again",()=>{sfx("tap");startLevel(li)});on("prev",()=>{sfx("tap");startLevel(li-1)});on("toMap",()=>{sfx("tap");home()});
 }
 function levelResult(){
@@ -1026,32 +1003,30 @@ function levelResult(){
   if(!play.retry)for(let k=0;k<st;k++)setTimeout(()=>sfx("star",k),300+k*350);
   setTimeout(()=>{if(bonus){addTal(bonus,document.getElementById("totN"));document.getElementById("totN").textContent=talents+"개"}
     if(unlocked)setTimeout(()=>sfx("unlock"),400);
-    if(chalNew){setTimeout(()=>{sfx("fanfare");confetti(160)},900);speak("도전 모드가 열렸어! 하트와 시간이 있는 도전 모드에 도전해 봐!")}
+    if(chalNew){setTimeout(()=>{sfx("fanfare");confetti(160)},900);}
     if(st===3||(play.retry&&!play.wrong.length)){sfx("fanfare");confetti(140)}},300+st*350);
-  speak(msg+(unlocked?` ${li+2}단계가 열렸어! 더 어려워져!`:""));
+  
   const wr=play.wrong.slice();
   on("chest",()=>{const b=document.getElementById("chest");if(b.disabled)return;b.disabled=true;
     const n=(2+Math.floor(Math.random()*5))*(mode==="challenge"?2:1);
     b.classList.add("pop");b.textContent="보물상자에서 달란트 "+n+"개!";sfx("buy");confetti(90);addTal(n,b);
-    const t=document.getElementById("totN");if(t)t.textContent=talents+"개";speak("보물상자에서 달란트 "+n+"개가 나왔어!")});
-  if(newCard)setTimeout(()=>speak(LEVELS[li].hero+" 카드를 얻었어! "+LEVELS[li].card),1600);
+    const t=document.getElementById("totN");if(t)t.textContent=talents+"개";});
   on("retry",()=>{sfx("tap");startLevel(li,wr)});on("nextLv",()=>{sfx("tap");startLevel(li+1)});
   on("again",()=>{sfx("tap");startLevel(li)});on("toShop",()=>{sfx("tap");shop()});on("toMap",()=>{sfx("tap");home()});
 }
 
 /* ================= 외운 낱말 보기 ================= */
 function dict(){
-  hush();
   const seen=new Set();
   const groups=LEVELS.map((L,i)=>({i,ws:[...new Set(L.qs.map(q=>q.w[q.a]))].filter(w=>!seen.has(w)&&seen.add(w))}));
   const total=seen.size,known=[...seen].filter(w=>(mastery[w]||0)>=3).length;
   app.innerHTML=`${hud("처음으로")}
   <h1 style="font-size:30px;color:var(--olive-dark)">외운 낱말 보기</h1>
-  <p style="color:var(--soft)">뜻을 한 번에 떠올릴 때마다 별이 하나씩 늘어요. 별 3개면 완전히 외운 낱말! 지금 ${total}개 중 <b>${known}개</b>. 누르면 읽어 줘요.</p>
+  <p style="color:var(--soft)">뜻을 한 번에 떠올릴 때마다 별이 하나씩 늘어요. 별 3개면 완전히 외운 낱말! 지금 ${total}개 중 <b>${known}개</b>.</p>
   ${groups.filter(g=>g.ws.length).map(g=>`<div class="dgroup"><h3>${g.i+1}단계 ${isOpen(g.i)?"":"(잠김)"}</h3><div class="dict">
     ${g.ws.map(w=>`<button class="dword" data-w="${w}"><b>${esc(NAME(w))}</b><span>${esc(M(w))}<br><small style="color:var(--soft)">예) ${esc(EX(w))}</small></span><em>${mStars(w)}</em></button>`).join("")}</div></div>`).join("")}`;
   bindHud(home);
-  app.querySelectorAll(".dword").forEach(b=>b.onclick=()=>{sfx("tap");speak(`${NAME(b.dataset.w)}. ${M(b.dataset.w)} 예를 들면, ${EX(b.dataset.w)}`)});
+  app.querySelectorAll(".dword").forEach(b=>b.onclick=()=>{sfx("tap");});
 }
 
 
@@ -1060,18 +1035,16 @@ const CARD_COLORS=["#3E6FA8","#8A5A2B","#7A4FA0","#C0562F","#3E8A5C","#2F7E86","
 function cardHtml(i){const L=LEVELS[i],c=CARD_COLORS[i%CARD_COLORS.length];
   return `<div class="hcard" style="--cc:${c}"><span class="hn">${i+1}</span><b>${esc(L.hero)}</b><p>${esc(L.card)}</p><small>${esc(L.cref)}</small></div>`}
 function cardsScreen(){
-  hush();
   app.innerHTML=`${hud("처음으로")}
   <h1 style="font-size:30px;color:var(--olive-dark)">성경 인물 카드</h1>
-  <p style="color:var(--soft)">단계를 깨면 그 단계 인물 카드를 얻어요. ${Object.keys(cards).length}/${LEVELS.length}장 모았어요. 누르면 읽어 줘요.</p>
+  <p style="color:var(--soft)">단계를 깨면 그 단계 인물 카드를 얻어요. ${Object.keys(cards).length}/${LEVELS.length}장 모았어요.</p>
   <div class="hcards">${LEVELS.map((L,i)=>cards[i]?`<button class="hbtn" data-i="${i}">${cardHtml(i)}</button>`:`<div class="hcard locked"><span class="hn">${i+1}</span><b>?</b><p>${i+1}단계를 깨면 열려요</p></div>`).join("")}</div>`;
   bindHud(home);
-  app.querySelectorAll(".hbtn").forEach(b=>b.onclick=()=>{const L=LEVELS[+b.dataset.i];sfx("tap");speak(L.hero+". "+L.card+". "+L.cref)});
+  app.querySelectorAll(".hbtn").forEach(b=>b.onclick=()=>{const L=LEVELS[+b.dataset.i];sfx("tap");});
 }
 
 /* ================= 다윗 꾸미기 ================= */
 function shop(){
-  hush();
   app.innerHTML=`${hud("처음으로")}
   <div class="shop"><h1 style="font-size:30px;color:var(--olive-dark)">다윗 꾸미기</h1>
    <div class="stage"><span class="bob">${DAVID(130,wear)}</span></div>
@@ -1085,7 +1058,7 @@ function shop(){
     const it=ITEMS.find(i=>i.id===b.dataset.id);
     if(owned.includes(it.id)){wear=wear.includes(it.id)?wear.filter(x=>x!==it.id):[...wear,it.id];save();sfx("tap");shop()}
     else if(talents>=it.price){talents-=it.price;owned.push(it.id);wear.push(it.id);save();sfx("buy");shop();confetti(80);
-      toast(`${it.name}을(를) 얻었어요!`);speak(`우와! ${it.name}! ${it.note.replace(/\(.*\)/,"")}`)}
+      toast(`${it.name}을(를) 얻었어요!`);}
     else{sfx("bad");toast(`달란트가 ${it.price-talents}개 더 필요해요`)}
   });
 }
@@ -1113,14 +1086,14 @@ setInterval(()=>{
   timeLeft--;if(timeLeft%5===0)saveTime();
   const c=document.getElementById("clockN");if(c)c.textContent=fmtTime(timeLeft);
   const b=document.getElementById("clockBtn");if(b)b.classList.toggle("low",timeLeft<=60);
-  if(timeLeft===60){toast("게임 시간이 1분 남았어요");speak("게임 시간이 1분 남았어.")}
+  if(timeLeft===60){toast("게임 시간이 1분 남았어요");}
   if(timeLeft<=0){saveTime();stopTimer();sfx("bad");bible("timeup")}
 },1000);
 document.addEventListener("visibilitychange",saveTime);
 document.addEventListener("click",e=>{if(e.target.closest&&e.target.closest("#clockBtn")){sfx("tap");bible("more")}});
 
 function bible(reason){
-  gated=true;stopTimer();hush();
+  gated=true;stopTimer();
   const books=bibTab==="ot"?BOOKS_OT:BOOKS_NT;
   const msg=reason==="timeup"?`${call()}, 게임 시간이 다 됐어! 성경을 읽고 체크하면 다시 할 수 있어.`
     :reason==="start"?`${call()}, 오늘 읽은 성경을 체크해 봐. 1장에 ${MIN_PER_CH}분씩 게임할 수 있어!`
@@ -1158,7 +1131,7 @@ function bible(reason){
   on("confirm",()=>{
     const n=pending.size;pending.forEach(k=>readCh[k]=today());pending.clear();store.set("bible",readCh);
     timeLeft+=n*MIN_PER_CH*60;saveTime();sfx("fanfare");confetti(120);
-    toast(`말씀 ${n}장! 게임 ${n*MIN_PER_CH}분이 생겼어요`);speak(`잘했어! 말씀 ${n}장을 읽어서 게임 ${n*MIN_PER_CH}분이 생겼어.`);
+    toast(`말씀 ${n}장! 게임 ${n*MIN_PER_CH}분이 생겼어요`);
     bible(reason);
   });
   on("toGame",()=>{gated=false;bibBook=null;sfx("good");home()});
@@ -1201,7 +1174,7 @@ function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMon
 const pinHash=s=>{let h=5381;for(const ch of "mw-salt-"+s)h=((h<<5)+h+ch.charCodeAt(0))|0;return String(h>>>0)};
 let pinSaved=store.get("pin",""),hiddenAt=0;
 function lockScreen(stage="enter",first=""){
-  gated=true;admin=false;stopTimer();hush();document.querySelectorAll(".admbox").forEach(b=>b.remove());
+  gated=true;admin=false;stopTimer();document.querySelectorAll(".admbox").forEach(b=>b.remove());
   let typed="";
   const title=stage==="set"?"부모님 비밀번호 정하기":stage==="again"?"한 번 더 눌러 주세요":"비밀번호를 눌러 주세요";
   const sub=stage==="set"?"앱을 켤 때마다 물어볼 숫자 4자리를 정해 주세요. 아이에게는 알려 주지 마세요.":stage==="again"?"방금 정한 4자리를 다시 눌러 주세요.":"부모님이 열어 주세요.";
@@ -1237,6 +1210,5 @@ document.addEventListener("visibilitychange",()=>{
   else if(hiddenAt&&pinSaved&&Date.now()-hiddenAt>60000){hiddenAt=0;lockScreen()}
 });
 
-try{speechSynthesis.getVoices()}catch(e){}
 pinSaved?lockScreen():lockScreen("set");
 </script>
