@@ -43,6 +43,19 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .name-row{display:flex;gap:8px;width:100%;max-width:360px}
 .name-row input{flex:1;min-width:0;font:inherit;font-size:20px;padding:12px 14px;border-radius:14px;border:3px solid var(--line);background:var(--scroll);color:var(--ink)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.clock{background:var(--scroll);border-radius:99px;padding:5px 11px;font-family:var(--display);font-size:17px;color:var(--sky);box-shadow:0 3px 0 var(--line);font-variant-numeric:tabular-nums}
+.clock.low{color:#fff;background:var(--no);animation:pop 1s infinite}
+.books{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.bk{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:10px 12px;border-radius:14px;background:var(--scroll);box-shadow:0 3px 0 var(--line);border:3px solid transparent;text-align:left;min-width:0}
+.bk b{font-family:var(--display);font-weight:400;font-size:17px;word-break:keep-all}
+.bk small{color:var(--soft);font-size:13px}
+.bk.open{border-color:var(--gold)}
+.bk.full{background:#DDF3E3}
+.chgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px}
+.ch{font-family:var(--display);font-size:18px;padding:9px 0;border-radius:12px;background:#fff;border:2px solid var(--line)}
+.ch.pick{background:var(--gold);border-color:#b98a1c;color:#4a3200;animation:pop .3s}
+.ch.done{background:#DDF3E3;border-color:var(--ok);color:var(--ok)}
+.bibbar{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;padding:10px;border-radius:20px;background:var(--sand);box-shadow:0 -4px 16px rgba(58,46,34,.12)}
 .modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mode{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:18px;background:var(--scroll);border:3px solid var(--line);text-align:center}
 .mode b{font-family:var(--display);font-weight:400;font-size:20px}
@@ -482,7 +495,7 @@ let sfxOn=store.get("sfx",true),bgmOn=store.get("bgm",false),voiceOn=store.get("
 const save=()=>{store.set("talents",talents);store.set("owned",owned);store.set("wear",wear);store.set("stars",stars);store.set("starsC",starsC);store.set("mastery",mastery)};
 function master(w,d){mastery[w]=Math.max(0,Math.min(3,(mastery[w]||0)+d));save()}
 /* 연습 모드(기본): 하트·시간 없음, 힌트 공짜, 틀리면 뜻 알려 줌. 연습 10단계를 깨면 도전 모드가 열린다 */
-let mode=store.get("mode","practice"),starsC=store.get("starsC",{});
+let mode=store.get("mode","practice"),starsC=store.get("starsC",{}),timeLeft=store.get("time",0);
 const challengeOpen=()=>openAll||(stars[LEVELS.length-1]||0)>0;
 if(mode==="challenge"&&!challengeOpen())mode="practice";
 const S=()=>mode==="challenge"?starsC:stars;
@@ -550,7 +563,8 @@ const on=(id,fn)=>{const e=document.getElementById(id);if(e)e.onclick=fn};
 
 function hud(back){
   return `<div class="hud">${back?`<button class="ico" id="backBtn">${esc(back)}</button>`:""}
-   <span class="purse" id="purse">${COIN(24)}<span id="talN">${talents}</span></span><span class="sp"></span>
+   <span class="purse" id="purse">${COIN(24)}<span id="talN">${talents}</span></span>
+   <button class="clock ${timeLeft<=60?"low":""}" id="clockBtn" aria-label="남은 게임 시간, 누르면 말씀 체크표">⏱ <span id="clockN">${fmtTime(timeLeft)}</span></button><span class="sp"></span>
    <button class="ico ${sfxOn?"":"off"}" id="tSfx">효과음</button>
    <button class="ico ${bgmOn?"":"off"}" id="tBgm">음악</button>
    <button class="ico ${voiceOn?"":"off"}" id="tVoice">읽어주기</button></div>`}
@@ -934,6 +948,70 @@ function shop(){
   });
 }
 
+/* ================= 말씀 체크표 (게임 시간) =================
+   성경 1장을 읽고 체크하면 게임 3분. 시편·잠언은 넣지 않는다.
+   한 번 체크한 장은 다시 시간을 주지 않는다. 시간이 0이면 게임이 잠기고 체크표가 뜬다. */
+const MIN_PER_CH=3;
+const BOOKS_OT=[["창세기",50],["출애굽기",40],["레위기",27],["민수기",36],["신명기",34],["여호수아",24],["사사기",21],["룻기",4],["사무엘상",31],["사무엘하",24],["열왕기상",22],["열왕기하",25],["역대상",29],["역대하",36],["에스라",10],["느헤미야",13],["에스더",10],["욥기",42],["전도서",12],["아가",8],["이사야",66],["예레미야",52],["예레미야애가",5],["에스겔",48],["다니엘",12],["호세아",14],["요엘",3],["아모스",9],["오바댜",1],["요나",4],["미가",7],["나훔",3],["하박국",3],["스바냐",3],["학개",2],["스가랴",14],["말라기",4]];
+const BOOKS_NT=[["마태복음",28],["마가복음",16],["누가복음",24],["요한복음",21],["사도행전",28],["로마서",16],["고린도전서",16],["고린도후서",13],["갈라디아서",6],["에베소서",6],["빌립보서",4],["골로새서",4],["데살로니가전서",5],["데살로니가후서",3],["디모데전서",6],["디모데후서",4],["디도서",3],["빌레몬서",1],["히브리서",13],["야고보서",5],["베드로전서",5],["베드로후서",3],["요한일서",5],["요한이서",1],["요한삼서",1],["유다서",1],["요한계시록",22]];
+let readCh=store.get("bible",{}),gated=false,bibTab="nt",bibBook=null,pending=new Set();
+function fmtTime(s){s=Math.max(0,s|0);return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`}
+const readCount=()=>Object.keys(readCh).length;
+function saveTime(){store.set("time",timeLeft)}
+setInterval(()=>{
+  if(gated||document.visibilityState!=="visible")return;
+  if(timeLeft<=0)return;
+  timeLeft--;if(timeLeft%5===0)saveTime();
+  const c=document.getElementById("clockN");if(c)c.textContent=fmtTime(timeLeft);
+  const b=document.getElementById("clockBtn");if(b)b.classList.toggle("low",timeLeft<=60);
+  if(timeLeft===60){toast("게임 시간이 1분 남았어요");speak("게임 시간이 1분 남았어.")}
+  if(timeLeft<=0){saveTime();stopTimer();sfx("bad");bible("timeup")}
+},1000);
+document.addEventListener("visibilitychange",saveTime);
+document.addEventListener("click",e=>{if(e.target.closest&&e.target.closest("#clockBtn")){sfx("tap");bible("more")}});
+
+function bible(reason){
+  gated=true;stopTimer();hush();
+  const books=bibTab==="ot"?BOOKS_OT:BOOKS_NT;
+  const msg=reason==="timeup"?`${call()}, 게임 시간이 다 됐어! 성경을 읽고 체크하면 다시 할 수 있어.`
+    :reason==="start"?`${call()}, 오늘 읽은 성경을 체크해 봐. 1장에 ${MIN_PER_CH}분씩 게임할 수 있어!`
+    :`성경을 더 읽었으면 체크해 봐. 1장에 ${MIN_PER_CH}분이야.`;
+  const bookRow=([n,c])=>{const done=Array.from({length:c},(_,k)=>readCh[n+":"+(k+1)]).filter(Boolean).length;
+    return `<button class="bk ${bibBook===n?"open":""} ${done===c?"full":""}" data-b="${n}"><b>${n}</b><small>${done}/${c}장</small></button>`};
+  let grid="";
+  if(bibBook){const c=books.find(b=>b[0]===bibBook)[1];
+    grid=`<div class="chgrid">${Array.from({length:c},(_,k)=>{const key=bibBook+":"+(k+1),d=readCh[key],p=pending.has(key);
+      return `<button class="ch ${d?"done":p?"pick":""}" data-k="${key}" ${d?"disabled":""}>${k+1}</button>`}).join("")}</div>`}
+  app.innerHTML=`
+  <div class="hud"><span class="purse">${COIN(24)}<span>${talents}</span></span><span class="clock ${timeLeft<=60?"low":""}">⏱ ${fmtTime(timeLeft)}</span><span class="sp"></span></div>
+  <div class="scene"><span class="bob">${DAVID(66,wear)}</span><div class="bubble"><b class="who">다윗</b><br>${esc(msg)}</div></div>
+  <h1 style="font-size:30px;color:var(--olive-dark)">말씀 체크표</h1>
+  <p style="color:var(--soft)">지금까지 읽은 장: <b>${readCount()}장</b> · 시편과 잠언은 빼고 체크해요</p>
+  <div class="modes">
+    <button class="mode ${bibTab==="ot"?"on":""}" id="tabOt"><b>구약</b></button>
+    <button class="mode ${bibTab==="nt"?"on":""}" id="tabNt"><b>신약</b></button>
+  </div>
+  ${bibBook?`<div class="card"><div class="qhead"><b style="font-family:var(--display);font-size:22px">${bibBook}</b><span class="sp"></span><button class="say" id="closeBk">닫기</button></div>
+    <p class="ask">읽은 장을 눌러 주세요. 초록색은 이미 읽은 장이에요.</p>${grid}</div>`:""}
+  <div class="books">${books.map(bookRow).join("")}</div>
+  <div class="bibbar">
+    ${pending.size?`<button class="btn gold" id="confirm">다 읽었어요! ${pending.size}장 → 게임 ${pending.size*MIN_PER_CH}분</button>`:`<p style="color:var(--soft);text-align:center">읽은 장을 고르면 게임 시간이 생겨요</p>`}
+    ${timeLeft>0?`<button class="btn ghost" id="toGame">게임하러 가기 (${fmtTime(timeLeft)} 남음)</button>`:""}
+  </div>`;
+  on("tabOt",()=>{bibTab="ot";bibBook=null;sfx("tap");bible(reason)});
+  on("tabNt",()=>{bibTab="nt";bibBook=null;sfx("tap");bible(reason)});
+  on("closeBk",()=>{bibBook=null;sfx("tap");bible(reason)});
+  app.querySelectorAll(".bk").forEach(b=>b.onclick=()=>{bibBook=bibBook===b.dataset.b?null:b.dataset.b;sfx("tap");bible(reason)});
+  app.querySelectorAll(".ch").forEach(b=>b.onclick=()=>{const k=b.dataset.k;pending.has(k)?pending.delete(k):pending.add(k);sfx("flip");bible(reason)});
+  on("confirm",()=>{
+    const n=pending.size;pending.forEach(k=>readCh[k]=true);pending.clear();store.set("bible",readCh);
+    timeLeft+=n*MIN_PER_CH*60;saveTime();sfx("fanfare");confetti(120);
+    toast(`말씀 ${n}장! 게임 ${n*MIN_PER_CH}분이 생겼어요`);speak(`잘했어! 말씀 ${n}장을 읽어서 게임 ${n*MIN_PER_CH}분이 생겼어.`);
+    bible(reason);
+  });
+  on("toGame",()=>{gated=false;bibBook=null;sfx("good");home()});
+}
+
 try{speechSynthesis.getVoices()}catch(e){}
-home();
+if(timeLeft>0)home();else bible("start");
 </script>

@@ -150,6 +150,7 @@ public class MainActivity extends Activity {
                 + "try{var A=window.AudioContext||window.webkitAudioContext;var a=new A();r.audio=a.state;var o=a.createOscillator();o.connect(a.destination);o.start();o.stop(a.currentTime+.05)}catch(e){r.audioErr=String(e)}"
                 + "try{r.saved=localStorage.getItem('wq_selftest');localStorage.setItem('wq_selftest','kept')}catch(e){r.lsErr=String(e)}"
                 + "r.home=!!document.getElementById('toShop');"
+                + "try{r.vis=localStorage.getItem('wq_vis');localStorage.setItem('wq_vis','');document.addEventListener('visibilitychange',function(){localStorage.setItem('wq_vis',(localStorage.getItem('wq_vis')||'')+document.visibilityState+'-')})}catch(e){}"
                 + "try{speechSynthesis.speak(new SpeechSynthesisUtterance('말씀 낱말 탐험대'))}catch(e){r.speakErr=String(e)}"
                 + "return JSON.stringify(r)})()";
         web.postDelayed(() -> web.evaluateJavascript(code, v -> Log.i(TAG, "selftest result " + v)), 3000);
@@ -193,6 +194,8 @@ public class MainActivity extends Activity {
     protected void onPause() {
         visible = false;
         if (tts != null) try { tts.stop(); } catch (Exception ignored) {}
+        // 게임 시간: 내리는 순간 남은 시간을 저장한다(게임의 saveTime). 내려가 있는 동안은 타이머가 멈춰 시간이 줄지 않는다.
+        if (web != null && loaded) web.evaluateJavascript("try{typeof saveTime==='function'&&saveTime()}catch(e){}", null);
         if (web != null) { web.onPause(); web.pauseTimers(); }
         super.onPause();
     }

@@ -75,6 +75,11 @@ jobs:
             grep -q 'home.\{0,6\}true' t1.txt || { echo "게임 첫 화면이 안 떴어요"; exit 1; }
             if grep -q 'audioErr' t1.txt; then echo "소리(WebAudio)가 안 켜져요"; exit 1; fi
             adb exec-out screencap -p > shot-home.png || true
+            # 홈으로 내렸다 다시 올리기: 게임 시간이 visibilitychange로 저장·멈추는지(결과는 2번째 켬의 vis)
+            adb shell input keyevent KEYCODE_HOME
+            sleep 4
+            adb shell am start -W -n app.wordquest/.MainActivity
+            sleep 4
             # 앱을 완전히 껐다 켜도 기록이 남는지
             adb shell am force-stop app.wordquest
             adb logcat -c
@@ -84,6 +89,7 @@ jobs:
             echo "===== 2번째 켬 ====="; cat t2.txt
             grep -q 'saved.\{0,6\}kept' t2.txt || { echo "앱을 다시 켜니 기록이 없어졌어요"; exit 1; }
             echo "읽어주기·소리·기록 모두 됨"
+            grep -q 'vis.\{0,6\}hidden' t2.txt && echo "홈으로 내리면 visibilitychange(hidden)가 와요" || echo "주의: 홈으로 내려도 visibilitychange가 안 왔어요(타이머는 멈추므로 시간은 안 줄어듦)"
             # 인터넷을 끄고 켜 봐도 꺼지지 않는지
             adb shell svc wifi disable; adb shell svc data disable; adb shell cmd connectivity airplane-mode enable || true
             adb shell am force-stop app.wordquest
