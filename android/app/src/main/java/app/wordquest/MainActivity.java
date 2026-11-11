@@ -215,6 +215,7 @@ public class MainActivity extends Activity {
         if (!loaded) { super.onBackPressed(); return; }
         // 비밀번호 화면·시간이 끝나 잠긴 화면에서는 뒤로 가기로 풀리지 않게 앱을 닫는다
         web.evaluateJavascript("(function(){try{if(window.appBack)return !!appBack();"
+                + "var ab=document.querySelector('.admbox');if(ab){ab.remove();return true}"
                 + "if(document.querySelector('.pinpad'))return false;"
                 + "var b=document.getElementById('backBtn');if(b){b.click();return true}"
                 + "if(typeof gated!=='undefined'&&gated)return false;"

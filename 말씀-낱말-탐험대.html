@@ -201,6 +201,11 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .hintbtn{align-self:flex-start;background:#FFF4D6;border-radius:10px;padding:5px 10px;font-family:var(--display);font-size:15px;color:#8a5f00}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media (max-width:380px){.sentence{font-size:21px}.choice{font-size:20px}.learn .big{font-size:40px}.map{grid-template-columns:1fr}}
+/* 관리자 로그인(작게, 체크표 오른쪽 위) */
+.adm{background:none;border:0;color:var(--soft);font-size:12px;opacity:.7;padding:4px 6px;text-decoration:underline}
+.admbox{position:fixed;inset:0;background:rgba(58,46,34,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.admbox form{background:var(--scroll);border-radius:16px;padding:18px;width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px}
+.admbox input{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
 </style>
 
 <canvas id="fx"></canvas>
@@ -1092,7 +1097,7 @@ function shop(){
 const MIN_PER_CH=3;
 const BOOKS_OT=[["창세기",50],["출애굽기",40],["레위기",27],["민수기",36],["신명기",34],["여호수아",24],["사사기",21],["룻기",4],["사무엘상",31],["사무엘하",24],["열왕기상",22],["열왕기하",25],["역대상",29],["역대하",36],["에스라",10],["느헤미야",13],["에스더",10],["욥기",42],["전도서",12],["아가",8],["이사야",66],["예레미야",52],["예레미야애가",5],["에스겔",48],["다니엘",12],["호세아",14],["요엘",3],["아모스",9],["오바댜",1],["요나",4],["미가",7],["나훔",3],["하박국",3],["스바냐",3],["학개",2],["스가랴",14],["말라기",4]];
 const BOOKS_NT=[["마태복음",28],["마가복음",16],["누가복음",24],["요한복음",21],["사도행전",28],["로마서",16],["고린도전서",16],["고린도후서",13],["갈라디아서",6],["에베소서",6],["빌립보서",4],["골로새서",4],["데살로니가전서",5],["데살로니가후서",3],["디모데전서",6],["디모데후서",4],["디도서",3],["빌레몬서",1],["히브리서",13],["야고보서",5],["베드로전서",5],["베드로후서",3],["요한일서",5],["요한이서",1],["요한삼서",1],["유다서",1],["요한계시록",22]];
-let readCh=store.get("bible",{}),gated=false;
+let readCh=store.get("bible",{}),gated=false,admin=false; // admin: 관리자 로그인 뒤 체크 없이 게임(시간 안 줄어듦). 앱을 다시 켜거나 잠기면 풀림
 /* 앱 쓰기 전에 읽은 것 미리 넣기 (2026-11-11 룡: 어제까지 출애굽기 6장까지 읽음 → 창세기 1~50 + 출애굽기 1~6, 회색, 게임 시간 없음). 한 번만. */
 if(!store.get("seed_20261110",false)){
   for(let k=1;k<=50;k++)if(!readCh["창세기:"+k])readCh["창세기:"+k]="2026-11-10";
@@ -1104,7 +1109,7 @@ function fmtTime(s){s=Math.max(0,s|0);return `${Math.floor(s/60)}:${String(s%60)
 const readCount=()=>Object.keys(readCh).length;
 function saveTime(){store.set("time",timeLeft)}
 setInterval(()=>{
-  if(gated||document.visibilityState!=="visible")return;
+  if(gated||admin||document.visibilityState!=="visible")return;
   if(timeLeft<=0)return;
   timeLeft--;if(timeLeft%5===0)saveTime();
   const c=document.getElementById("clockN");if(c)c.textContent=fmtTime(timeLeft);
@@ -1131,7 +1136,7 @@ function bible(reason){
       return `<button class="ch ${d?(d===td?"today":"past"):p?"pick":""}" data-k="${key}" ${d?"disabled":""}>${k+1}</button>`}).join("")}</div>
       <div class="legend"><span><i class="ch past"></i>전에 읽음</span><span><i class="ch today"></i>오늘 읽음</span><span><i class="ch pick"></i>지금 고름</span><span><i class="ch"></i>안 읽음</span></div>`}
   app.innerHTML=`
-  <div class="hud"><span class="purse">${COIN(24)}<span>${talents}</span></span><span class="clock ${timeLeft<=60?"low":""}">⏱ ${fmtTime(timeLeft)}</span><span class="sp"></span></div>
+  <div class="hud"><span class="purse">${COIN(24)}<span>${talents}</span></span><span class="clock ${timeLeft<=60?"low":""}">⏱ ${fmtTime(timeLeft)}</span><span class="sp"></span><button class="adm" id="admBtn">관리자</button></div>
   <div class="scene"><span class="bob">${DAVID(66,wear)}</span><div class="bubble"><b class="who">다윗</b><br>${esc(msg)}</div></div>
   <h1 style="font-size:30px;color:var(--olive-dark)">말씀 체크표</h1>
   <p style="color:var(--soft)">지금까지 읽은 장: <b>${readCount()}장</b> · 오늘 <b style="color:var(--sky)">${Object.values(readCh).filter(v=>v===td).length}장</b> · 시편과 잠언은 빼고 체크해요</p>
@@ -1158,6 +1163,35 @@ function bible(reason){
     bible(reason);
   });
   on("toGame",()=>{gated=false;bibBook=null;sfx("good");home()});
+  on("admBtn",()=>{sfx("tap");adminLogin()});
+}
+
+/* 관리자 로그인: 업무 기록(기록 앱)과 같은 아이디·비밀번호. 맞으면 체크 없이 게임(이번에 켠 동안만). */
+const SB="https://trlnatdkebjvgiqneulv.supabase.co",SB_KEY="sb_publishable_BqE1VCDg50oi9zCflCjMuw_wYF55CTj";
+function adminLogin(){
+  const box=document.createElement("div");box.className="admbox";
+  box.innerHTML=`<form><b style="font-family:var(--display);font-size:20px;color:var(--olive-dark)">관리자 로그인</b>
+    <small style="color:var(--soft)">기록 앱과 같은 아이디·비밀번호</small>
+    <input id="admId" autocomplete="username" placeholder="아이디">
+    <input id="admPw" type="password" autocomplete="current-password" placeholder="비밀번호">
+    <p id="admMsg" style="color:var(--no);min-height:1.2em;margin:0;font-size:14px"></p>
+    <div class="row2"><button type="button" class="btn ghost sm" id="admNo">닫기</button><button class="btn gold sm" id="admGo">들어가기</button></div></form>`;
+  document.body.appendChild(box);
+  const close=()=>box.remove(),msg=t=>box.querySelector("#admMsg").textContent=t;
+  box.querySelector("#admNo").onclick=close;
+  box.onclick=e=>{if(e.target===box)close()};
+  box.querySelector("#admId").focus();
+  box.querySelector("form").onsubmit=async e=>{
+    e.preventDefault();const go=box.querySelector("#admGo");go.disabled=true;msg("확인하는 중…");
+    try{
+      const r=await fetch(SB+"/rest/v1/rpc/rel_login",{method:"POST",headers:{apikey:SB_KEY,"Content-Type":"application/json"},
+        body:JSON.stringify({p_id:box.querySelector("#admId").value,p_pw:box.querySelector("#admPw").value})});
+      const j=await r.json().catch(()=>({}));
+      if(r.ok&&j&&j.token){close();admin=true;gated=false;bibBook=null;sfx("good");toast("관리자로 들어왔어요");home();return}
+      msg((j&&j.error)||"아이디나 비밀번호가 맞지 않아요.");
+    }catch(err){msg("인터넷 연결을 확인해 주세요.")}
+    go.disabled=false;
+  };
 }
 
 function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
@@ -1168,7 +1202,7 @@ function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMon
 const pinHash=s=>{let h=5381;for(const ch of "mw-salt-"+s)h=((h<<5)+h+ch.charCodeAt(0))|0;return String(h>>>0)};
 let pinSaved=store.get("pin",""),hiddenAt=0;
 function lockScreen(stage="enter",first=""){
-  gated=true;stopTimer();hush();
+  gated=true;admin=false;stopTimer();hush();document.querySelectorAll(".admbox").forEach(b=>b.remove());
   let typed="";
   const title=stage==="set"?"부모님 비밀번호 정하기":stage==="again"?"한 번 더 눌러 주세요":"비밀번호를 눌러 주세요";
   const sub=stage==="set"?"앱을 켤 때마다 물어볼 숫자 4자리를 정해 주세요. 아이에게는 알려 주지 마세요.":stage==="again"?"방금 정한 4자리를 다시 눌러 주세요.":"부모님이 열어 주세요.";
