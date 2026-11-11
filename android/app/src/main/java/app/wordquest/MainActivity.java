@@ -151,6 +151,7 @@ public class MainActivity extends Activity {
                 + "try{r.saved=localStorage.getItem('wq_selftest');localStorage.setItem('wq_selftest','kept')}catch(e){r.lsErr=String(e)}"
                 + "r.home=!!(document.getElementById('toShop')||document.querySelector('.pinpad'));"
                 + "r.pin=!!document.querySelector('.pinpad');"
+                + "try{var bb=JSON.parse(localStorage.getItem('mw2_bible')||'{}');r.seed=Object.keys(bb).filter(function(k){return bb[k]==='2026-11-10'}).length}catch(e){}"
                 + "try{r.vis=localStorage.getItem('wq_vis');localStorage.setItem('wq_vis','');document.addEventListener('visibilitychange',function(){localStorage.setItem('wq_vis',(localStorage.getItem('wq_vis')||'')+document.visibilityState+'-')})}catch(e){}"
                 + "try{speechSynthesis.speak(new SpeechSynthesisUtterance('말씀 낱말 탐험대'))}catch(e){r.speakErr=String(e)}"
                 + "return JSON.stringify(r)})()";
