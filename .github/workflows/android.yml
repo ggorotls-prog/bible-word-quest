@@ -21,7 +21,7 @@ jobs:
           gradle-version: '8.11.1'
       # 게임은 드라이브의 파일 하나를 그대로 앱 안에 넣는다(고치지 않음)
       - name: 게임 파일 넣기
-        run: cp "말씀-낱말-탐험대.html" android/app/src/main/assets/game.html
+        run: mkdir -p android/app/src/main/assets && cp "말씀-낱말-탐험대.html" android/app/src/main/assets/game.html
       # 열쇠는 고정(기록 앱 공용 record). 없으면 멈춘다: 새 열쇠로 만들면 폰에 덮어 깔 수 없다.
       - name: 서명 열쇠 꺼내기
         env:
