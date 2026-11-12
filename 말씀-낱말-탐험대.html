@@ -88,6 +88,22 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .lv small{color:var(--soft);font-size:13.5px}
 .lv .st{color:var(--gold);letter-spacing:1px}
 .lv[disabled]{opacity:.45;cursor:default}
+.stage{display:flex;align-items:center;gap:8px}
+.stage .arr{flex:none;width:48px;height:64px;border-radius:16px;background:var(--scroll);box-shadow:0 4px 0 var(--line);font-size:24px;color:var(--olive-dark)}
+.stage .arr[disabled]{opacity:.3}
+.lv.big{flex:1;align-items:center;text-align:center;gap:6px;padding:20px 14px;min-height:230px;justify-content:center}
+.lv.big .ln{align-self:center;font-size:18px}
+.lv.big .who{font-family:var(--display);font-size:16px;color:var(--soft)}
+.lv.big b{font-size:28px}
+.lv.big small{font-size:15px}
+.lv.big .st{font-size:26px}
+.lv.big[disabled] .st{font-size:16px;color:var(--soft);letter-spacing:0}
+.lv.big .go{margin-top:4px;font-family:var(--display);font-size:20px;color:#fff;background:var(--olive);border-radius:14px;padding:8px 26px;box-shadow:0 4px 0 var(--olive-dark)}
+.pips{display:flex;justify-content:center;flex-wrap:wrap;gap:6px}
+.pip{width:30px;height:30px;border-radius:50%;background:var(--scroll);box-shadow:0 2px 0 var(--line);font-family:var(--display);font-size:13px;color:var(--olive-dark)}
+.pip.clear{background:var(--gold);color:#fff}
+.pip.lock{opacity:.4}
+.pip.on{outline:3px solid var(--sky);outline-offset:1px}
 .dad{align-self:center;color:var(--soft);font-size:14px;text-decoration:underline}
 
 .top{display:flex;align-items:center;gap:10px}
@@ -702,6 +718,7 @@ function addTal(n,el){if(n<=0)return;talents+=n;save();const t=document.getEleme
   flyText(`+${n} ${COIN(20)}`,el);sfx("coin")}
 
 /* ================= 처음 화면 + 단계 지도 ================= */
+let mapView=null; /* 지도에 보이는 단계. 단계를 하고 오면 null → 다음 깰 단계로 */
 function home(){
   const next=LEVELS.findIndex((_,i)=>!(S()[i]>0));
   const cOpen=challengeOpen();
@@ -726,10 +743,17 @@ function home(){
     <button class="mode ${mode==="practice"?"on":""}" id="mPrac"><b>연습 모드</b><small>하트·시간 없이 끝까지</small></button>
     <button class="mode chal ${mode==="challenge"?"on":""}" id="mChal" ${cOpen?"":"disabled"}><b>도전 모드${cOpen?"":" (잠김)"}</b><small>${cOpen?"하트·시간! 달란트 두 배":"연습 10단계를 깨면 열려요"}</small></button>
   </div>
-  <div class="map">${LEVELS.map((L,i)=>{const op=isOpen(i);
-    return `<button class="lv ${L.hard?"hard":""} ${i===next&&op?"next":""}" data-i="${i}" ${op?"":"disabled"}>
-      <span class="ln">${i+1}단계</span><b>${esc(L.t)}</b><small>${esc(L.sub)}</small>${dots(i)}
-      <span class="st">${op?starStr(S()[i]||0):"잠김"}</span></button>`}).join("")}</div>
+  ${(()=>{/* 단계 지도: 한 단계씩 크게, ◀ ▶ 화살표·밀기로 옆 단계(2026-11-12 룡) */
+    if(mapView==null){let last=0;LEVELS.forEach((_,i)=>{if(isOpen(i))last=i});mapView=next>=0&&isOpen(next)?next:last}
+    const i=mapView,L=LEVELS[i],op=isOpen(i),st=S()[i]||0;
+    return `<div class="stage" id="stage">
+      <button class="arr" id="mPrev" aria-label="앞 단계" ${i===0?"disabled":""}>◀</button>
+      <button class="lv big ${L.hard?"hard":""} ${i===next&&op?"next":""}" data-i="${i}" ${op?"":"disabled"}>
+        <span class="ln">${i+1}단계</span><span class="who">${esc(L.hero)}</span><b>${esc(L.t)}</b><small>${esc(L.sub)}</small>${dots(i)}
+        <span class="st">${op?starStr(st):"🔒 앞 단계를 깨면 열려요"}</span>
+        ${op?`<span class="go">${st>0?"다시 하기":"시작!"}</span>`:""}</button>
+      <button class="arr" id="mNext" aria-label="다음 단계" ${i===LEVELS.length-1?"disabled":""}>▶</button></div>
+    <div class="pips">${LEVELS.map((_,k)=>`<button class="pip ${k===i?"on":""} ${(S()[k]||0)>0?"clear":""} ${isOpen(k)?"":"lock"}" data-k="${k}" aria-label="${k+1}단계">${(S()[k]||0)>0?"★":k+1}</button>`).join("")}</div>`})()}
   <button class="dad" id="dad">${openAll?"아빠용: 단계 잠금 다시 켜기":"아빠용: 모든 단계 열기"}</button>`;
   stopTimer();bindHud();
   on("saveName",()=>{kid=document.getElementById("kidname").value.trim();store.set("kid",kid);sfx("good");home()});
@@ -737,9 +761,15 @@ function home(){
   on("toDict",()=>{sfx("tap");dict()});
   on("toCards",()=>{sfx("tap");cardsScreen()});
   on("dad",()=>{openAll=!openAll;store.set("openAll",openAll);if(!challengeOpen())mode="practice";store.set("mode",mode);sfx("tap");home()});
-  on("mPrac",()=>{mode="practice";store.set("mode",mode);sfx("tap");home()});
-  on("mChal",()=>{if(!cOpen)return;mode="challenge";store.set("mode",mode);sfx("unlock");home()});
+  on("mPrac",()=>{mode="practice";store.set("mode",mode);mapView=null;sfx("tap");home()});
+  on("mChal",()=>{if(!cOpen)return;mode="challenge";store.set("mode",mode);mapView=null;sfx("unlock");home()});
   app.querySelectorAll(".lv").forEach(b=>b.onclick=()=>{sfx("tap");startLevel(+b.dataset.i)});
+  const go=k=>{if(k<0||k>=LEVELS.length||k===mapView)return;mapView=k;sfx("flip");home()};
+  on("mPrev",()=>go(mapView-1));on("mNext",()=>go(mapView+1));
+  app.querySelectorAll(".pip").forEach(b=>b.onclick=()=>go(+b.dataset.k));
+  const sg=document.getElementById("stage");let x0=null;
+  sg.addEventListener("touchstart",e=>{x0=e.touches[0].clientX},{passive:true});
+  sg.addEventListener("touchend",e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0;x0=null;if(Math.abs(dx)>50)go(mapView+(dx<0?1:-1))});
 }
 
 /* ================= 단계별 난이도 =================
@@ -761,7 +791,7 @@ const dots=i=>`<span class="diff" aria-label="난이도 ${i+1}">${Array.from({le
 let play=null,tick=null;
 function stopTimer(){clearInterval(tick);tick=null}
 function startLevel(li,only){
-  stopTimer();
+  stopTimer();mapView=null;
   const L=LEVELS[li],D=getD(li);
   const items=(only||L.qs.map((_,i)=>i)).map(i=>({kind:"q",qi:i,fix:isBlank(L.qs[i])&&Math.random()<D.fix}));
   if(!only){
