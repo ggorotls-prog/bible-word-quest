@@ -683,7 +683,8 @@ const COIN=(s=22)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hid
 
 /* ================= 저장 ================= */
 const store={get(k,d){try{const v=localStorage.getItem("mw2_"+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
-             set(k,v){try{localStorage.setItem("mw2_"+k,JSON.stringify(v))}catch(e){}}};
+             set(k,v){if(!["pin","sfx","bgm"].includes(k)&&isAdm())return;try{localStorage.setItem("mw2_"+k,JSON.stringify(v))}catch(e){}}};
+/* 관리자 = 테스트 계정(2026-11-14 룡): 별·달란트·보스·복습·시간 기록이 아이 기록에 쌓이지 않는다. 비밀번호·소리 설정만 저장 */
 let kid=store.get("kid",""),talents=store.get("talents",0),owned=store.get("owned",[]),wear=store.get("wear",[]);
 let stars=store.get("stars",{}),mastery=store.get("mastery",{}),openAll=store.get("openAll",false);
 let sfxOn=store.get("sfx",true),bgmOn=store.get("bgm",true),voiceOn=store.get("voice",true);
@@ -696,7 +697,7 @@ function bagDel(w){const k=bag.indexOf(w);if(k>=0){bag.splice(k,1);store.set("ba
 /* 연습 모드(기본): 하트·시간 없음, 힌트 공짜, 틀리면 뜻 알려 줌. 연습 10단계를 깨면 도전 모드가 열린다 */
 let cards=store.get("cards",{}),mode=store.get("mode","practice"),starsC=store.get("starsC",{}),timeLeft=store.get("time",0);
 /* 관리자(로그인)면 모든 단계·모드·보스전이 열린다(2026-11-14 룡). admin은 아래에서 선언되므로 try로 읽는다 */
-const isAdm=()=>{try{return admin}catch(e){return false}};
+function isAdm(){try{return admin}catch(e){return false}}
 const challengeOpen=()=>isAdm()||openAll||(stars[LEVELS.length-1]||0)>0;
 if(mode==="challenge"&&!challengeOpen())mode="practice";
 const S=()=>mode==="challenge"?starsC:stars;
@@ -828,7 +829,7 @@ function home(){
       :bossOpen(i)?`⚔️ 골리앗 보스전이 열렸어요! <button class="btn sm" id="toBoss">싸우러 가기</button>`
       :`🔒 별 3개로 깨면 골리앗 보스전이 열려요 (지금 ${starStr(st)})`}</div>`:""}
     <div class="pips">${LEVELS.map((_,k)=>`<button class="pip ${k===i?"on":""} ${(S()[k]||0)>0?"clear":""} ${isOpen(k)?"":"lock"}" data-k="${k}" aria-label="${k+1}단계">${!zoned()&&bosses[k]?"🏆":(S()[k]||0)>0?"★":k+1}</button>`).join("")}</div>`})()}
-  ${isAdm()?`<p class="bossrow">🔑 관리자: 모든 판·도전 모드·보스전이 열려 있어요${avgMin()?` · 최근 판 평균 ${avgMin()}분`:""}</p>`:""}
+  ${isAdm()?`<p class="bossrow">🔑 관리자(테스트 계정): 모든 판·도전 모드·보스전이 열려 있고, 여기서 한 것은 아이 기록에 남지 않아요${avgMin()?` · 최근 판 평균 ${avgMin()}분`:""}</p>`:""}
   <button class="dad" id="dad">${openAll?"아빠용: 단계 잠금 다시 켜기":"아빠용: 모든 단계 열기"}</button>`;
   stopTimer();bindHud();
   on("saveName",()=>{kid=document.getElementById("kidname").value.trim();store.set("kid",kid);sfx("good");home()});
@@ -1478,12 +1479,14 @@ function giftTime(reason){
       setTimeout(()=>{if(pinHash(typed)===pinSaved){sfx("good");pick()}else{sfx("bad");typed="";draw();box.querySelector("#gMsg").textContent="비밀번호가 달라요"}},150)})};
   const pick=()=>{box.innerHTML=`<form onsubmit="return false"><b style="font-family:var(--display);font-size:20px;color:var(--olive-dark)">상으로 줄 게임 시간</b>
       <small style="color:var(--soft)">잘한 일을 칭찬해 주세요</small>
-      <div class="row2">${[5,10,15,20].map(m=>`<button type="button" class="btn gold sm" data-m="${m}">${m}분</button>`).join("")}</div>
-      <button type="button" class="btn ghost sm" id="gNo">닫기</button></form>`;
-    box.querySelector("#gNo").onclick=close;
-    box.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{const m=+b.dataset.m;close();
+      <div style="display:flex;align-items:center;gap:8px;justify-content:center"><input id="gMin" type="number" inputmode="numeric" min="1" max="120" placeholder="10" style="width:7em;text-align:center;font-size:24px"><b>분</b></div>
+      <p id="gErr" style="color:var(--no);min-height:1.2em;margin:0;font-size:14px"></p>
+      <div class="row2"><button type="button" class="btn ghost sm" id="gNo">닫기</button><button type="button" class="btn gold sm" id="gGo">주기</button></div></form>`;
+    box.querySelector("#gNo").onclick=close;const inp=box.querySelector("#gMin");inp.focus();
+    const give=()=>{const m=Math.round(+inp.value);if(!(m>=1&&m<=120)){box.querySelector("#gErr").textContent="1~120 사이 숫자를 넣어 주세요";return}close();
       timeLeft+=m*60;saveTime();const g=store.get("gifts",[]);g.push({day:today(),min:m});store.set("gifts",g.slice(-60));
-      sfx("fanfare");confetti(140);toast(`부모님이 상으로 게임 ${m}분을 주셨어요!`);bible(reason)})};
+      sfx("fanfare");confetti(140);toast(`부모님이 상으로 게임 ${m}분을 주셨어요!`);bible(reason)};
+    box.querySelector("#gGo").onclick=give;inp.onkeydown=e=>{if(e.key==="Enter")give()}};
   if(!pinSaved){pick();return}
   pin();
 }
@@ -1523,7 +1526,14 @@ function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMon
    앱을 켤 때와, 1분 넘게 나갔다가 돌아올 때 묻는다. */
 const pinHash=s=>{let h=5381;for(const ch of "mw-salt-"+s)h=((h<<5)+h+ch.charCodeAt(0))|0;return String(h>>>0)};
 let pinSaved=store.get("pin",""),hiddenAt=0;
+function reloadState(){
+  talents=store.get("talents",0);owned=store.get("owned",[]);wear=store.get("wear",[]);mastery=store.get("mastery",{});
+  cards=store.get("cards",{});mode=store.get("mode","practice");timeLeft=store.get("time",0);bag=store.get("bag",[]);
+  dailyDay=store.get("daily","");readCh=store.get("bible",{});openAll=store.get("openAll",false);setPart(store.get("part",0));
+  if(mode==="challenge"&&!challengeOpen())mode="practice";
+}
 function lockScreen(stage="enter",first=""){
+  if(admin){admin=false;reloadState()}
   gated=true;admin=false;stopTimer();document.querySelectorAll(".admbox").forEach(b=>b.remove());
   let typed="";
   const title=stage==="set"?"부모님 비밀번호 정하기":stage==="again"?"한 번 더 눌러 주세요":"비밀번호를 눌러 주세요";
