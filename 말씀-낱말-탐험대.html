@@ -121,6 +121,16 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .ach b{font-family:var(--display);font-weight:400;font-size:17px}
 .ach small{color:var(--soft);font-size:13.5px}
 .stage{display:flex;align-items:center;gap:8px}
+.parts{display:flex;gap:8px;overflow-x:auto}
+.part{flex:1;min-width:120px;font-family:var(--display);font-size:17px;padding:10px 8px;border-radius:14px;background:var(--scroll);box-shadow:0 3px 0 var(--line);color:var(--olive-dark)}
+.part.on{background:var(--olive);color:#fff;box-shadow:0 3px 0 var(--olive-dark)}
+.choices.many{grid-template-columns:repeat(2,1fr)}
+.choices.many .choice{font-size:19px;padding:10px 6px}
+.choice.sel{border-color:var(--sky);background:#E4EEF8}
+.arena.alk{background:linear-gradient(#F3E1B5,#E2C68E)}
+.board{display:grid;grid-template-columns:repeat(3,26px);gap:8px;padding:12px;background:#E9C77D;border-radius:10px;border:3px solid #B98A3A;min-height:60px}
+.board .bk{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#666,#111);transition:transform .45s,opacity .45s}
+.board .bk.gone{transform:translate(60px,-40px) rotate(90deg);opacity:0}
 .stage .arr{flex:none;width:48px;height:64px;border-radius:16px;background:var(--scroll);box-shadow:0 4px 0 var(--line);font-size:24px;color:var(--olive-dark)}
 .stage .arr[disabled]{opacity:.3}
 .lv.big{flex:1;align-items:center;text-align:center;gap:6px;padding:20px 14px;min-height:230px;justify-content:center}
@@ -547,7 +557,7 @@ const ASK_IDIOM="빈칸에 들어갈 표현으로 가장 알맞은 것을 고르
 const ASK_CONJ="빈칸에 들어갈 이어 주는 말로 가장 알맞은 것을 고르세요.";
 /* 모든 단계가 같은 틀(6문제): ① 소리 비슷한 낱말 ② 비슷한 말 ③ 반대말 ④ 이어 주는 말 ⑤ 여러 뜻·관용 표현 ⑥ 성경 속 어려운 낱말
    단계마다 성경 인물 한 명의 이야기. 뒤로 갈수록 낱말이 어려워진다. 새 파트도 이 틀에 낱말만 바꿔 넣는다. */
-const LEVELS=[
+const LEVELS0=[
  {t:"노아 이야기",hero:"노아",card:"하나님 말씀대로 방주를 지은 사람",cref:"창세기 6~9장",sub:"심다 · 가득하다 · 명하다",qs:[
   {who:"노아",ref:"창세기 9:20",story:"큰 홍수가 끝나고 노아 가족이 방주에서 나왔어. 노아는 농사를 시작했대.",s:"노아가 땅에 포도나무를 (   ).",c:["심었다","씻었다","실었다","싫었다"],w:["심다","씻다","싣다","싫다"],a:0},
   {who:"노아",ref:"창세기 9:1",story:"홍수가 끝나고 하나님께서 노아 가족에게 복을 주셨어.",ask:ASK_SYN,s:"하나님은 '자녀를 많이 낳아 땅에 [[가득하라]]' 하고 말씀하셨다.",c:["텅 비어라","꽉 차라","흩어져라","숨어라"],w:["텅 비다","꽉 차다","흩어지다","숨다"],a:1},
@@ -619,6 +629,15 @@ const LEVELS=[
   {who:"사울(바울)",ref:"사도행전 9:3-6, 20",story:"예수님 믿는 사람들을 괴롭히던 사울은 다마스쿠스로 가는 길에 예수님을 만났어. 그 뒤로 완전히 달라졌지.",ask:ASK_IDIOM,s:"사울은 예수님을 전하는 일에 (   ).",c:["발을 끊었다","발이 넓었다","발 벗고 나섰다","발이 묶였다"],w:["발을 끊다","발이 넓다","발 벗고 나서다","발이 묶이다"],a:2},
   {who:"바울",ref:"빌립보서 4:6",story:"감옥에 갇힌 바울이 빌립보 교회에 편지를 보냈어. 걱정하지 말고 하나님께 간절히 구하라고 했지.",s:"아무것도 걱정하지 말고, 모든 일에 기도와 (   )로 구할 것을 하나님께 아뢰라.",c:["칭찬","고민","간구","약속"],w:["칭찬","고민","간구","약속"],a:2}]}
 ];
+/* ================= 책 『나민애의 문해력 게임』 1단계(1권) 1화 (2026-11-14 룡) =================
+   판 하나 = 꼭지 하나(그 꼭지 꼴 4문제 + 앞 꼭지 꼴 2문제). 뜻은 표준국어대사전을 아이 말로.
+   noMean: 뜻 한 번 더 찾기 없음 · key: 복습할 낱말 · why: 두 번 틀리면 보여 주는 풀이 · multi: 두 개 고르기 */
+const BOOK1_1=[{"code": "1-1-1", "t": "1-1-1 낱말의 뜻 알기", "sub": "밑줄 친 낱말의 뜻 찾기", "qs": [{"noMean": 1, "key": "담대하다", "ask": "밑줄 친 낱말의 뜻을 가장 잘 설명한 것은 무엇인가요?", "s": "다윗은 커다란 골리앗 앞에서도 [[담대했다]].", "c": ["무섭고 걱정스러워하다.", "움직이거나 일하기를 싫어하는 버릇이 있다.", "겁이 없고 배짱이 두둑하다.", "시끄럽지 않고 고요하다."], "a": 2}, {"noMean": 1, "key": "순종하다", "ask": "밑줄 친 낱말의 뜻을 가장 잘 설명한 것은 무엇인가요?", "s": "노아는 하나님 말씀에 [[순종하여]] 방주를 지었다.", "c": ["남의 말을 고분고분 잘 따르다.", "못마땅하게 여겨 남을 탓하다.", "이리저리 생각만 하고 얼른 정하지 못하다.", "자기 것이 좋다고 남에게 드러내어 말하다."], "a": 0}, {"noMean": 1, "key": "용서", "ask": "밑줄 친 낱말의 뜻을 가장 잘 설명한 것은 무엇인가요?", "s": "요셉은 자기를 판 형들의 잘못을 [[용서]]해 주었다.", "c": ["잘못에 대해 받는 괴로움.", "잘못을 꾸짖지 않고 덮어 줌.", "못마땅하게 여겨 남을 탓함.", "사람이나 말을 하찮게 여기거나 업신여김."], "a": 1}, {"noMean": 1, "key": "지혜", "ask": "밑줄 친 낱말의 뜻을 가장 잘 설명한 것은 무엇인가요?", "s": "솔로몬은 하나님께 [[지혜]]를 구했다.", "c": ["가지고 있는 돈이나 집, 땅 같은 것.", "몸이나 마음이 일을 할 수 있게 하는 기운.", "무엇을 지나치게 가지거나 하고 싶어 하는 마음.", "사물의 이치를 깨닫고 바르게 판단하는 힘."], "a": 3}, {"noMean": 1, "key": "기도", "ask": "밑줄 친 낱말의 뜻을 가장 잘 설명한 것은 무엇인가요?", "s": "다니엘은 하루 세 번 무릎을 꿇고 [[기도]]했다.", "c": ["아름답고 훌륭한 것을 크게 높여 드러냄.", "하나님께 마음을 말씀드리고 구하는 것.", "마음속으로 괴로워하며 애를 태움.", "다른 사람과 앞으로 할 일을 미리 정함."], "a": 1}, {"noMean": 1, "key": "흉년", "ask": "밑줄 친 낱말의 뜻을 가장 잘 설명한 것은 무엇인가요?", "s": "이집트 땅에 일곱 해 동안 [[흉년]]이 들었다.", "c": ["곡식이 아주 잘 자라 거둘 것이 많은 해.", "여름에 여러 날 계속 비가 내리는 때.", "곡식이 잘 자라지 않아 먹을 것이 모자란 해.", "한 해의 네 철 가운데 가장 추운 철."], "a": 2}]}, {"code": "1-1-2", "t": "1-1-2 단어의 올바른 사용", "sub": "낱말이 바르게 쓰인 문장 찾기", "qs": [{"noMean": 1, "key": "잊다", "ask": "'잊다'가 가장 올바르게 쓰인 문장은 무엇인가요?", "s": "", "c": ["다윗은 양 한 마리를 잊어버려 들판을 찾아다녔다.", "노아는 하나님 말씀을 잊지 않았다.", "에스라는 율법을 백성 앞에서 큰 소리로 잊었다.", "요셉은 형들에게 채색 옷을 잊었다."], "a": 1, "why": "①은 '잃어버려', ③은 '읽었다', ④는 '잃었다'가 맞아요."}, {"noMean": 1, "key": "짓다", "ask": "'짓다'가 가장 올바르게 쓰인 문장은 무엇인가요?", "s": "", "c": ["목자의 개가 늑대를 보고 크게 지었다.", "아침 안개가 아주 지었다.", "노아는 하나님 말씀대로 방주를 지었다.", "다윗은 시냇가에서 매끄러운 돌을 지었다."], "a": 2, "why": "①은 '짖었다', ②는 '짙었다', ④는 '집었다'가 맞아요."}, {"noMean": 1, "key": "바치다", "ask": "'바치다'가 가장 올바르게 쓰인 문장은 무엇인가요?", "s": "", "c": ["아벨은 가장 좋은 양을 하나님께 바쳤다.", "사무엘은 두 손으로 등잔을 바쳤다.", "들소 뿔에 바쳐서 넘어졌다.", "삶은 나물을 체에 바쳐 물기를 뺐다."], "a": 0, "why": "②는 '받쳤다', ③은 '받혀서', ④는 '밭쳐'가 맞아요."}, {"noMean": 1, "key": "가르치다", "ask": "'가르치다'가 가장 올바르게 쓰인 문장은 무엇인가요?", "s": "", "c": ["예수님은 손가락으로 하늘을 가르치셨다.", "예수님은 산 위에서 사람들을 가르치셨다.", "소년이 손가락으로 별을 가르치며 세었다.", "모세가 지팡이를 들자 바닷물이 가르쳤다."], "a": 1, "why": "①은 '가리키셨다', ③은 '가리키며', ④는 '갈라졌다'가 맞아요."}, {"noMean": 1, "key": "부지런하다", "ask": "밑줄 친 낱말의 뜻을 가장 잘 설명한 것은 무엇인가요?", "s": "룻은 밭에서 [[부지런하게]] 보리 이삭을 주웠다.", "c": ["미루지 않고 꾸준히 열심히 하다.", "움직이거나 일하기를 싫어하는 버릇이 있다.", "이리저리 생각만 하고 얼른 정하지 못하다.", "창피하거나 쑥스러워하다."], "a": 0}, {"noMean": 1, "key": "언약", "ask": "밑줄 친 낱말의 뜻을 가장 잘 설명한 것은 무엇인가요?", "s": "하나님은 무지개로 노아와 [[언약]]을 세우셨다.", "c": ["조심하라고 미리 알림.", "잘잘못을 가려 판단함.", "기쁜 일을 축하하는 큰 잔치.", "말로 한 약속."], "a": 3}]}, {"code": "1-1-3", "t": "1-1-3 크기가 작은 돌", "sub": "바르게 쓴 낱말 찾기", "qs": [{"noMean": 1, "ask": "빈칸에 들어갈 낱말을 바르게 쓴 것을 고르세요.", "s": "노아 가족은 비가 그칠 때까지 방주 안에서 (   ) 동안 기다렸다.", "c": ["몇일", "며칠", "몇칠", "며일"], "a": 1, "why": "'며칠'이 맞아요. '몇일'은 틀린 말이에요."}, {"noMean": 1, "ask": "빈칸에 들어갈 낱말을 바르게 쓴 것을 고르세요.", "s": "예수님은 제자들의 발을 (   ) 씻어 주셨다.", "c": ["깨끗히", "깨긋이", "깨끗이", "깨끗시"], "a": 2, "why": "'깨끗이'가 맞아요."}, {"noMean": 1, "ask": "빈칸에 들어갈 낱말을 바르게 쓴 것을 고르세요.", "s": "엘리야가 기도하자 하늘에서 (   ) 큰비가 쏟아졌다.", "c": ["금세", "금새", "금쌔", "곰세"], "a": 0, "why": "'금세'는 '지금 바로'라는 뜻이에요. '금새'는 물건값이라는 다른 낱말이에요."}, {"noMean": 1, "ask": "빈칸에 들어갈 낱말을 바르게 쓴 것을 고르세요.", "s": "야곱은 돌 하나를 (   )로 삼아 베고 잠들었다.", "c": ["배개", "베게", "배게", "베개"], "a": 3, "why": "'베개'가 맞아요."}, {"noMean": 1, "key": "회개", "ask": "밑줄 친 낱말의 뜻을 가장 잘 설명한 것은 무엇인가요?", "s": "삭개오는 예수님을 만나고 잘못을 [[회개]]했다.", "c": ["자기 것이 좋다고 남에게 드러내어 말함.", "잘못 살아온 것을 깨닫고 뉘우쳐 새롭게 살기로 함.", "마음속으로 괴로워하며 애를 태움.", "확실히 알 수 없어서 믿지 못함."], "a": 1}, {"noMean": 1, "key": "맞히다", "ask": "'맞히다'가 가장 올바르게 쓰인 문장은 무엇인가요?", "s": "", "c": ["다윗이 던진 물맷돌이 골리앗의 이마를 맞혔다.", "느헤미야는 무너진 성벽 돌을 제자리에 맞혔다.", "예수님은 기도를 다 맞히시고 일어나셨다.", "제자들은 발을 맞혀 나란히 걸었다."], "a": 0, "why": "②는 '맞추었다', ③은 '마치시고', ④는 '맞추어'가 맞아요."}]}, {"code": "1-1-4", "t": "1-1-4 비슷한말/반대말", "sub": "관계가 다른 짝 찾기", "qs": [{"noMean": 1, "ask": "짝지어진 낱말 사이의 관계가 다른 것을 고르세요.", "s": "", "c": ["빛 – 어둠", "낮 – 밤", "처음 – 끝", "기쁘다 – 즐겁다"], "a": 3, "why": "①~③은 뜻이 반대인 말이에요. ④는 뜻이 비슷한 말이에요."}, {"noMean": 1, "ask": "짝지어진 낱말 사이의 관계가 다른 것을 고르세요.", "s": "", "c": ["지혜 – 슬기", "외모 – 겉모습", "무서워하다 – 두려워하다", "부지런하다 – 게으르다"], "a": 3, "why": "①~③은 뜻이 비슷한 말이에요. ④는 뜻이 반대인 말이에요."}, {"noMean": 1, "ask": "짝지어진 낱말 사이의 관계가 다른 것을 고르세요.", "s": "", "c": ["젊다 – 늙다", "찬양하다 – 찬송하다", "풍년 – 흉년", "맏이 – 막내"], "a": 1, "why": "②만 뜻이 비슷한 말이고, 나머지는 반대인 말이에요."}, {"noMean": 1, "ask": "짝지어진 낱말 사이의 관계가 다른 것을 고르세요.", "s": "", "c": ["넓다 – 좁다", "선 – 악", "구하다 – 살리다", "웃다 – 울다"], "a": 2, "why": "③만 뜻이 비슷한 말이고, 나머지는 반대인 말이에요."}, {"noMean": 1, "key": "메다", "ask": "'메다'가 가장 올바르게 쓰인 문장은 무엇인가요?", "s": "", "c": ["룻은 신발 끈을 단단히 메었다.", "베드로는 배를 말뚝에 메었다.", "목자는 찾은 양을 어깨에 메고 돌아왔다.", "야곱은 양들을 나무에 메어 두었다."], "a": 2, "why": "①②④는 끈으로 묶는 것이라 '매었다', '매어'가 맞아요. '메다'는 어깨에 걸치는 거예요."}, {"noMean": 1, "ask": "빈칸에 들어갈 낱말을 바르게 쓴 것을 고르세요.", "s": "요셉은 이집트에서 형들을 (   ) 다시 만났다.", "c": ["오랫만에", "오랜만에", "오랜마네", "오랜만애"], "a": 1, "why": "'오랜만에'가 맞아요. '오래간만에'를 줄인 말이에요."}]}, {"code": "1-1-5", "t": "1-1-5 흉내 내는 말", "sub": "어울리지 않는 흉내말 찾기", "qs": [{"noMean": 1, "ask": "흉내 내는 말이 가장 어울리지 않는 것은 무엇인가요?", "s": "", "c": ["비둘기가 [[훨훨]] 날아왔다.", "큰 물고기가 [[깡충깡충]] 헤엄쳤다.", "양들이 [[졸졸]] 목자를 따라갔다.", "낙타가 [[터벅터벅]] 걸어갔다."], "a": 1, "why": "'깡충깡충'은 토끼처럼 뛰는 모습이에요. 물고기는 뛰지 않고 헤엄쳐요."}, {"noMean": 1, "ask": "흉내 내는 말이 가장 어울리지 않는 것은 무엇인가요?", "s": "", "c": ["바람이 [[쌩쌩]] 불었다.", "비가 [[주룩주룩]] 내렸다.", "아기 모세가 [[응애응애]] 울었다.", "해가 [[엉금엉금]] 떠올랐다."], "a": 3, "why": "'엉금엉금'은 거북이처럼 느리게 기어가는 모습이에요."}, {"noMean": 1, "ask": "흉내 내는 말이 가장 어울리지 않는 것은 무엇인가요?", "s": "", "c": ["다윗이 돌을 [[휙]] 던졌다.", "골리앗이 [[쿵]] 쓰러졌다.", "양들이 [[음매]] 하고 울었다.", "사람들이 [[와]] 하고 소리쳤다."], "a": 2, "why": "'음매'는 소 울음소리예요. 양은 '매애' 하고 울어요."}, {"noMean": 1, "ask": "흉내 내는 말이 가장 어울리지 않는 것은 무엇인가요?", "s": "", "c": ["여리고 성벽이 [[와르르]] 무너졌다.", "나팔 소리가 [[뿌우]] 하고 울렸다.", "백성들이 [[살금살금]] 큰 소리로 외쳤다.", "사람들이 [[뚜벅뚜벅]] 성을 돌았다."], "a": 2, "why": "'살금살금'은 소리 안 나게 몰래 움직이는 모습이라, 큰 소리와 어울리지 않아요."}, {"noMean": 1, "ask": "빈칸에 들어갈 낱말을 바르게 쓴 것을 고르세요.", "s": "다윗이 던진 돌이 골리앗의 이마에 (   ) 맞았다.", "c": ["정확이", "정학히", "정확히", "정확키"], "a": 2, "why": "'정확히'가 맞아요."}, {"noMean": 1, "ask": "짝지어진 낱말 사이의 관계가 다른 것을 고르세요.", "s": "", "c": ["근면 – 부지런함", "들어가다 – 나오다", "올라가다 – 내려가다", "만나다 – 헤어지다"], "a": 0, "why": "①만 뜻이 비슷한 말이고, 나머지는 반대인 말이에요."}]}, {"code": "1-1-6", "t": "1-1-6 예상하지 못한 행동", "sub": "뜻을 보고 낱말 찾기", "qs": [{"noMean": 1, "key": "정탐", "ask": "다음 뜻을 가진 낱말은 무엇인가요?", "s": "'몰래 사정을 살펴 알아냄.'", "c": ["정탐", "청소", "구경", "공격"], "a": 0}, {"noMean": 1, "key": "형통하다", "ask": "다음 뜻을 가진 낱말은 무엇인가요?", "s": "'하는 일이 뜻대로 잘되어 가다.'", "c": ["실패하다", "망설이다", "형통하다", "게으르다"], "a": 2}, {"noMean": 1, "key": "긍휼", "ask": "다음 뜻을 가진 낱말은 무엇인가요?", "s": "'불쌍히 여겨 돌보아 주는 마음.'", "c": ["욕심", "긍휼", "무시", "의심"], "a": 1}, {"noMean": 1, "key": "경외", "ask": "다음 뜻을 가진 낱말은 무엇인가요?", "s": "'공경하면서 두려워함.'", "c": ["원망", "무시", "자랑", "경외"], "a": 3}, {"noMean": 1, "ask": "짝지어진 낱말 사이의 관계가 다른 것을 고르세요.", "s": "", "c": ["크다 – 작다", "높다 – 낮다", "힘세다 – 튼튼하다", "밝다 – 어둡다"], "a": 2, "why": "③만 뜻이 비슷한 말이고, 나머지는 반대인 말이에요."}, {"noMean": 1, "ask": "흉내 내는 말이 가장 어울리지 않는 것은 무엇인가요?", "s": "", "c": ["개구리가 [[팔짝팔짝]] 뛰었다.", "메뚜기 떼가 [[윙윙]] 날아왔다.", "우박이 [[후두둑]] 쏟아졌다.", "파리가 [[뒤뚱뒤뚱]] 날아다녔다."], "a": 3, "why": "'뒤뚱뒤뚱'은 오리처럼 몸을 흔들며 걷는 모습이에요."}]}, {"code": "1-1-7", "t": "1-1-7 빈칸에 들어갈 낱말", "sub": "모양이 비슷한 낱말 가려 쓰기", "qs": [{"ask": "빈칸에 들어갈 낱말로 가장 알맞은 것을 고르세요.", "s": "요셉은 아버지가 지어 준 채색 옷을 (   ) 형들을 찾아갔다.", "c": ["잃고", "입고", "읽고", "잊고"], "w": ["잃다", "입다", "읽다", "잊다"], "a": 1}, {"ask": "빈칸에 들어갈 낱말로 가장 알맞은 것을 고르세요.", "s": "노아는 하나님 말씀대로 커다란 방주를 (   ).", "c": ["지었다", "짖었다", "짙었다"], "w": ["짓다", "짖다", "짙다"], "a": 0}, {"ask": "빈칸에 들어갈 낱말로 가장 알맞은 것을 고르세요.", "s": "아벨은 가장 좋은 양을 하나님께 (   ).", "c": ["받쳤다", "받혔다", "바쳤다", "밭쳤다"], "w": ["받치다", "받히다", "바치다", "밭치다"], "a": 2}, {"ask": "빈칸에 들어갈 낱말로 가장 알맞은 것을 고르세요.", "s": "예수님은 산 위에 앉아 사람들을 (   ).", "c": ["가리키셨다", "가르치셨다", "마치셨다"], "w": ["가리키다", "가르치다", "마치다"], "a": 1}, {"noMean": 1, "ask": "흉내 내는 말이 가장 어울리지 않는 것은 무엇인가요?", "s": "", "c": ["방주가 물 위에 [[둥실둥실]] 떠다녔다.", "비둘기가 [[파닥파닥]] 날갯짓했다.", "동물들이 [[줄줄이]] 방주로 들어갔다.", "뱀이 [[성큼성큼]] 기어갔다."], "a": 3, "why": "'성큼성큼'은 다리를 크게 벌려 걷는 모습이에요. 뱀은 '스르르' 기어가요."}, {"noMean": 1, "key": "간구", "ask": "다음 뜻을 가진 낱말은 무엇인가요?", "s": "'간절히 바라며 구함.'", "c": ["간구", "고백", "칭찬", "경고"], "a": 0}]}, {"code": "1-1-8", "t": "1-1-8 바꾸어 쓸 수 있는 낱말", "sub": "바꿔 쓸 말 두 개 찾기", "qs": [{"noMean": 1, "key": "두려워하다", "ask": "밑줄 친 낱말과 바꾸어 쓸 수 있는 낱말을 두 가지 고르세요.", "s": "다윗은 커다란 골리앗 앞에서도 [[두려워하지]] 않았다.", "c": ["기뻐하지", "무서워하지", "배고파하지", "웃지", "겁내지", "잠자지", "노래하지", "달리지", "숨지", "자랑하지"], "multi": [1, 4], "a": 1, "why": "'두려워하다'는 무서워하는 마음을 갖는 거예요. '무서워하지', '겁내지'로 바꿔 쓸 수 있어요."}, {"noMean": 1, "key": "지혜롭다", "ask": "밑줄 친 낱말과 바꾸어 쓸 수 있는 낱말을 두 가지 고르세요.", "s": "솔로몬은 [[지혜로운]] 왕이었다.", "c": ["게으른", "배고픈", "슬기로운", "시끄러운", "젊은", "현명한", "키 작은", "심심한", "졸린", "부유한"], "multi": [2, 5], "a": 2, "why": "'슬기로운', '현명한'으로 바꿔 쓸 수 있어요."}, {"noMean": 1, "key": "명하다", "ask": "밑줄 친 낱말과 바꾸어 쓸 수 있는 낱말을 두 가지 고르세요.", "s": "하나님은 노아에게 방주를 지으라고 [[명하셨다]].", "c": ["숨기셨다", "명령하셨다", "잊으셨다", "웃으셨다", "주무셨다", "물으셨다", "시키셨다", "노래하셨다", "달리셨다", "쉬셨다"], "multi": [1, 6], "a": 1, "why": "'명하다'는 윗사람이 무엇을 하게 하는 거예요. '명령하셨다', '시키셨다'로 바꿔 쓸 수 있어요."}, {"noMean": 1, "key": "외모", "ask": "밑줄 친 낱말과 바꾸어 쓸 수 있는 낱말을 두 가지 고르세요.", "s": "하나님은 사람의 [[외모]]를 보지 않고 마음을 보신다.", "c": ["이름", "겉모습", "나이", "목소리", "발걸음", "생김새", "약속", "노래", "집", "생각"], "multi": [1, 5], "a": 1, "why": "'외모'는 겉으로 보이는 모양이에요. '겉모습', '생김새'로 바꿔 쓸 수 있어요."}, {"noMean": 1, "key": "인내", "ask": "다음 뜻을 가진 낱말은 무엇인가요?", "s": "'괴롭고 힘든 것을 참고 견딤.'", "c": ["낙심", "욕심", "인내", "걱정"], "a": 2}, {"ask": "빈칸에 들어갈 낱말로 가장 알맞은 것을 고르세요.", "s": "다윗이 던진 물맷돌이 골리앗의 이마를 (   ).", "c": ["맞췄다", "마쳤다", "맞혔다"], "w": ["맞추다", "마치다", "맞히다"], "a": 2}]}];
+const PARTS=[
+ {id:"",name:"인물 이야기",levels:LEVELS0,zones:false},
+ {id:"b1h1",name:"1화 단어의 뜻",levels:BOOK1_1,zones:true,final:"알까기"}];
+let LEVELS=LEVELS0;
+
 
 /* ================= 꾸미기 (다윗의 물건) ================= */
 const ITEMS=[
@@ -668,7 +687,7 @@ const store={get(k,d){try{const v=localStorage.getItem("mw2_"+k);return v==null?
 let kid=store.get("kid",""),talents=store.get("talents",0),owned=store.get("owned",[]),wear=store.get("wear",[]);
 let stars=store.get("stars",{}),mastery=store.get("mastery",{}),openAll=store.get("openAll",false);
 let sfxOn=store.get("sfx",true),bgmOn=store.get("bgm",true),voiceOn=store.get("voice",true);
-const save=()=>{store.set("talents",talents);store.set("owned",owned);store.set("wear",wear);store.set("stars",stars);store.set("starsC",starsC);store.set("mastery",mastery)};
+const save=()=>{store.set("talents",talents);store.set("owned",owned);store.set("wear",wear);store.set(pk("stars"),stars);store.set(pk("starsC"),starsC);store.set("mastery",mastery)};
 function master(w,d){mastery[w]=Math.max(0,Math.min(3,(mastery[w]||0)+d));save()}
 /* 틀린 낱말 주머니(보스전·오늘의 복습에서 먼저 나온다), 보스전 업적, 오늘의 복습 날짜 */
 let bag=store.get("bag",[]),bosses=store.get("bosses",{}),dailyDay=store.get("daily","");
@@ -676,10 +695,22 @@ function bagAdd(w){if(!w||w.includes(":")||bag.includes(w))return;bag.push(w);st
 function bagDel(w){const k=bag.indexOf(w);if(k>=0){bag.splice(k,1);store.set("bag",bag)}}
 /* 연습 모드(기본): 하트·시간 없음, 힌트 공짜, 틀리면 뜻 알려 줌. 연습 10단계를 깨면 도전 모드가 열린다 */
 let cards=store.get("cards",{}),mode=store.get("mode","practice"),starsC=store.get("starsC",{}),timeLeft=store.get("time",0);
-const challengeOpen=()=>openAll||(stars[LEVELS.length-1]||0)>0;
+/* 관리자(로그인)면 모든 단계·모드·보스전이 열린다(2026-11-14 룡). admin은 아래에서 선언되므로 try로 읽는다 */
+const isAdm=()=>{try{return admin}catch(e){return false}};
+const challengeOpen=()=>isAdm()||openAll||(stars[LEVELS.length-1]||0)>0;
 if(mode==="challenge"&&!challengeOpen())mode="practice";
 const S=()=>mode==="challenge"?starsC:stars;
-const isOpen=i=>openAll||i===0||(S()[i-1]||0)>0;
+const isOpen=i=>isAdm()||openAll||i===0||(S()[i-1]||0)>0;
+/* 파트 바꾸기: 그 파트의 판·별·보스로 갈아 끼운다 */
+let partI=0;
+function pk(k){return PARTS[partI].id?PARTS[partI].id+"_"+k:k}
+function setPart(k){partI=PARTS[k]?k:0;LEVELS=PARTS[partI].levels;stars=store.get(pk("stars"),{});starsC=store.get(pk("starsC"),{});bosses=store.get(pk("bosses"),{});store.set("part",partI);mapView=null}
+const ZONE=3,zoned=()=>PARTS[partI].zones,zoneOf=i=>Math.floor(i/ZONE),zoneCount=()=>Math.ceil(LEVELS.length/ZONE);
+const zoneStages=z=>LEVELS.map((_,i)=>i).filter(i=>zoneOf(i)===z);
+const best=i=>Math.max(stars[i]||0,starsC[i]||0);
+const zoneOpen=z=>isAdm()||zoneStages(z).every(i=>best(i)>=3);
+const isFinal=z=>z===zoneCount()-1;
+
 
 /* ================= 소리 ================= */
 let ac=null;
@@ -756,6 +787,7 @@ function addTal(n,el){if(n<=0)return;talents+=n;save();const t=document.getEleme
 /* ================= 처음 화면 + 단계 지도 ================= */
 let mapView=null; /* 지도에 보이는 단계. 단계를 하고 오면 null → 다음 깰 단계로 */
 function home(){
+  if(mode==="challenge"&&!challengeOpen())mode="practice"; /* 관리자에서 나오면 도전 모드가 잠긴 경우 */
   const next=LEVELS.findIndex((_,i)=>!(S()[i]>0));
   const cOpen=challengeOpen();
   const nx=ITEMS.find(i=>!owned.includes(i.id));
@@ -772,14 +804,15 @@ function home(){
   <div class="row2">
     <button class="btn gold" id="toShop">${COIN(22)} 다윗 꾸미기</button>
     <button class="btn ghost" id="toDict">외운 낱말 보기</button>
-    <button class="btn ghost" id="toCards">인물 카드 ${Object.keys(cards).length}/${LEVELS.length}</button>
-    <button class="btn ghost" id="toAch">🏆 업적 ${Object.keys(bosses).length}/${LEVELS.length}</button>
+    <button class="btn ghost" id="toCards">인물 카드 ${Object.keys(cards).length}/${LEVELS0.length}</button>
+    <button class="btn ghost" id="toAch">🏆 업적 ${Object.keys(bosses).length}/${zoned()?zoneCount():LEVELS.length}</button>
   </div>
   ${dailyDay!==today()&&learned().length+bag.length>=3?`<button class="btn gold dailybtn" id="toDaily">🎁 오늘의 복습 3문제</button>`:""}
   ${nx?`<p style="text-align:center;color:var(--soft)">다음 선물: ${esc(nx.name)} (달란트 ${nx.price}개)</p>`:""}
+  <div class="parts">${PARTS.map((P,k)=>`<button class="part ${k===partI?"on":""}" data-p="${k}">${esc(P.name)}</button>`).join("")}</div>
   <div class="modes">
     <button class="mode ${mode==="practice"?"on":""}" id="mPrac"><b>연습 모드</b><small>하트·시간 없이 끝까지</small></button>
-    <button class="mode chal ${mode==="challenge"?"on":""}" id="mChal" ${cOpen?"":"disabled"}><b>도전 모드${cOpen?"":" (잠김)"}</b><small>${cOpen?"하트·시간! 달란트 두 배":"연습 10단계를 깨면 열려요"}</small></button>
+    <button class="mode chal ${mode==="challenge"?"on":""}" id="mChal" ${cOpen?"":"disabled"}><b>도전 모드${cOpen?"":" (잠김)"}</b><small>${cOpen?"하트·시간! 달란트 두 배":`연습 ${LEVELS.length}판을 깨면 열려요`}</small></button>
   </div>
   ${(()=>{/* 단계 지도: 한 단계씩 크게, ◀ ▶ 화살표·밀기로 옆 단계(2026-11-12 룡) */
     if(mapView==null){let last=0;LEVELS.forEach((_,i)=>{if(isOpen(i))last=i});mapView=next>=0&&isOpen(next)?next:last}
@@ -787,21 +820,23 @@ function home(){
     return `<div class="stage" id="stage">
       <button class="arr" id="mPrev" aria-label="앞 단계" ${i===0?"disabled":""}>◀</button>
       <button class="lv big ${L.hard?"hard":""} ${i===next&&op?"next":""}" data-i="${i}" ${op?"":"disabled"}>
-        <span class="ln">${i+1}단계</span><span class="who">${esc(L.hero)}</span><b>${esc(L.t)}</b><small>${esc(L.sub)}</small>${dots(i)}
+        <span class="ln">${zoned()?`구역 ${zoneOf(i)+1} · ${i+1}판`:`${i+1}단계`}</span><span class="who">${esc(L.hero||L.code||"")}</span><b>${esc(zoned()?L.t.replace(/^\S+\s/,""):L.t)}</b><small>${esc(L.sub)}</small>${dots(i)}
         <span class="st">${op?starStr(st):"🔒 앞 단계를 깨면 열려요"}</span>
         ${op?`<span class="go">${st>0?"다시 하기":"시작!"}</span>`:""}</button>
       <button class="arr" id="mNext" aria-label="다음 단계" ${i===LEVELS.length-1?"disabled":""}>▶</button></div>
-    ${op?`<div class="bossrow ${bosses[i]?"won":""}">${bosses[i]?`🏆 골리앗을 무찔렀어요 <button class="btn ghost sm" id="toBoss">다시 싸우기</button>`
+    ${op&&zoned()?`<div class="bossrow ${bosses["z"+zoneOf(i)]?"won":""}">${zoneLine(zoneOf(i))}</div>`:op?`<div class="bossrow ${bosses[i]?"won":""}">${bosses[i]?`🏆 골리앗을 무찔렀어요 <button class="btn ghost sm" id="toBoss">다시 싸우기</button>`
       :bossOpen(i)?`⚔️ 골리앗 보스전이 열렸어요! <button class="btn sm" id="toBoss">싸우러 가기</button>`
       :`🔒 별 3개로 깨면 골리앗 보스전이 열려요 (지금 ${starStr(st)})`}</div>`:""}
-    <div class="pips">${LEVELS.map((_,k)=>`<button class="pip ${k===i?"on":""} ${(S()[k]||0)>0?"clear":""} ${isOpen(k)?"":"lock"}" data-k="${k}" aria-label="${k+1}단계">${bosses[k]?"🏆":(S()[k]||0)>0?"★":k+1}</button>`).join("")}</div>`})()}
+    <div class="pips">${LEVELS.map((_,k)=>`<button class="pip ${k===i?"on":""} ${(S()[k]||0)>0?"clear":""} ${isOpen(k)?"":"lock"}" data-k="${k}" aria-label="${k+1}단계">${!zoned()&&bosses[k]?"🏆":(S()[k]||0)>0?"★":k+1}</button>`).join("")}</div>`})()}
+  ${isAdm()?`<p class="bossrow">🔑 관리자: 모든 판·도전 모드·보스전이 열려 있어요${avgMin()?` · 최근 판 평균 ${avgMin()}분`:""}</p>`:""}
   <button class="dad" id="dad">${openAll?"아빠용: 단계 잠금 다시 켜기":"아빠용: 모든 단계 열기"}</button>`;
   stopTimer();bindHud();
   on("saveName",()=>{kid=document.getElementById("kidname").value.trim();store.set("kid",kid);sfx("good");home()});
   on("toShop",()=>{sfx("tap");shop()});
   on("toDict",()=>{sfx("tap");dict()});
   on("toCards",()=>{sfx("tap");cardsScreen()});
-  on("toAch",()=>{sfx("tap");achieve()});on("toDaily",()=>{sfx("tap");daily()});on("toBoss",()=>{sfx("tap");bossFight(mapView)});
+  on("toAch",()=>{sfx("tap");achieve()});on("toDaily",()=>{sfx("tap");daily()});on("toBoss",()=>{sfx("tap");bossFight(zoned()?"z"+zoneOf(mapView):mapView)});
+  app.querySelectorAll(".part").forEach(b=>b.onclick=()=>{const k=+b.dataset.p;if(k===partI)return;setPart(k);if(mode==="challenge"&&!challengeOpen())mode="practice";sfx("flip");home()});
   on("dad",()=>{openAll=!openAll;store.set("openAll",openAll);if(!challengeOpen())mode="practice";store.set("mode",mode);sfx("tap");home()});
   on("mPrac",()=>{mode="practice";store.set("mode",mode);mapView=null;sfx("tap");home()});
   on("mChal",()=>{if(!cOpen)return;mode="challenge";store.set("mode",mode);mapView=null;sfx("unlock");home()});
@@ -818,9 +853,11 @@ function home(){
    hearts: 목숨(0=없음) · time: 문제당 초(0=없음) · hint: "free"/달란트 값/0(없음)
    ch: 문제 보기 수 상한 · mean: 뜻 찾기 보기 수 · fix: 틀린 낱말 고치기 문제 비율
    info: 틀린 보기 뜻 알려주기 */
-const DIFF=LEVELS.map(()=>({hearts:3,time:45,hint:2,ch:4,mean:4,fix:.3,info:false}));
+const DIFF0={hearts:3,time:45,hint:2,ch:4,mean:4,fix:.3,info:false};
 const PRACTICE={hearts:0,time:0,hint:"free",info:true};
-const getD=i=>mode==="challenge"?DIFF[i]:{...DIFF[i],...PRACTICE};
+const getD=i=>mode==="challenge"?{...DIFF0}:{...DIFF0,...PRACTICE};
+const ansW=q=>q.key||(q.w?q.w[q.a]:null); /* 그 문제에서 복습할 낱말 */
+const okW=w=>w&&DICT[w]&&!w.includes(":");
 const BL="(   )",isBlank=q=>q.s.includes(BL);
 const ul=s=>esc(s).replace(/\[\[(.+?)\]\]/g,'<u style="text-decoration-thickness:3px;text-decoration-color:var(--gold)">$1</u>');
 const plain=s=>s.replace(/\[\[|\]\]/g,"");
@@ -835,13 +872,14 @@ function stopTimer(){clearInterval(tick);tick=null}
 function startLevel(li,only){
   stopTimer();mapView=null;
   const L=LEVELS[li],D=getD(li);
-  const items=(only||L.qs.map((_,i)=>i)).map(i=>({kind:"q",qi:i,fix:isBlank(L.qs[i])&&Math.random()<D.fix}));
+  const items=(only||L.qs.map((_,i)=>i)).map(i=>({kind:"q",qi:i,fix:!!L.qs[i].w&&!L.qs[i].noMean&&isBlank(L.qs[i])&&Math.random()<D.fix}));
   if(!only){
-    const answers=shuffle([...new Set(L.qs.map(q=>q.w[q.a]))].filter(w=>!w.includes(":"))).slice(0,2);
-    answers.forEach(w=>items.push({kind:"recall",w,set:L.qs.find(q=>q.w[q.a]===w).w}));
-    if(li>0){const prev=LEVELS[li-1+(Math.random()<.5&&li>1?-1:0)];const q=shuffle(prev.qs.filter(x=>!x.w[x.a].includes(":")))[0]||LEVELS[0].qs[0];items.push({kind:"recall",w:q.w[q.a],set:q.w,old:true})}
+    const here=[...new Set(L.qs.map(ansW))].filter(okW);
+    shuffle(here).slice(0,2).forEach(w=>{const q=L.qs.find(x=>ansW(x)===w);items.push({kind:"recall",w,set:q.w||here})});
+    if(li>0){const prev=LEVELS[li-1+(Math.random()<.5&&li>1?-1:0)];const pw=[...new Set(prev.qs.map(ansW))].filter(okW);const w=shuffle(pw)[0];
+      if(w){const q=prev.qs.find(x=>ansW(x)===w);items.push({kind:"recall",w,set:q.w||pw,old:true})}}
   }
-  play={li,L,D,items,i:0,perfect:0,combo:0,maxCombo:0,earned:0,wrong:[],retry:!!only,hearts:D.hearts,over:false};
+  play={li,L,D,items,i:0,perfect:0,combo:0,maxCombo:0,earned:0,wrong:[],retry:!!only,hearts:D.hearts,over:false,t0:Date.now()};
   if(!only)levelIntro();else step();
 }
 function levelIntro(){
@@ -891,6 +929,7 @@ function runTimer(it){
     if(left<=0){stopTimer();sfx("bad");toast("시간이 끝났어요!");it.first=false;if(!hurt())runTimer(it)}},1000);
 }
 function trimChoices(q){
+  if(q.multi||q.noMean)return q.c.map((_,i)=>i); /* 책 꼴 문제는 보기를 줄이지 않는다 */
   const idx=q.c.map((_,i)=>i);
   return [q.a,...shuffle(idx.filter(i=>i!==q.a)).slice(0,play.D.ch-1)].sort((a,b)=>a-b);
 }
@@ -908,19 +947,20 @@ function question(it){
         :`<button class="tok" data-t="0">${esc(t)}</button>`).join(" ")}</div>
       <div id="fixArea"></div>`;
   }else{
-    const long=q.c.some(c=>c.length>9);
+    const long=q.c.some(c=>plain(c).length>9),many=q.c.length>5;
     body=`<p class="ask">${esc(q.ask||"문장의 빈칸에 들어갈 가장 알맞은 말을 고르세요.")}</p>
-      <div class="sentence">${isBlank(q)?esc(q.s).replace(BL,'<span class="blank" id="blank">?</span>'):ul(q.s)}</div>
-      <div class="choices ${long?"one":""}" id="ch">${keep.map((i,k)=>`<button class="choice ${long?"mean":""}" data-i="${i}"><span class="n">${k+1}</span>${esc(q.c[i])}</button>`).join("")}</div>`;
+      ${q.s?`<div class="sentence">${isBlank(q)?esc(q.s).replace(BL,'<span class="blank" id="blank">?</span>'):ul(q.s)}</div>`:""}
+      ${q.multi?`<p class="ask" id="mcount" style="text-align:center">두 개를 골라요 (0/2)</p>`:""}
+      <div class="choices ${long?"one":""} ${many?"many":""}" id="ch">${keep.map((i,k)=>`<button class="choice ${long?"mean":""}" data-i="${i}">${many?"":`<span class="n">${k+1}</span>`}${ul(q.c[i])}</button>`).join("")}</div>`;
   }
   app.innerHTML=`${hud("단계 지도")}${topBar()}
   <div class="scene"><span class="bob">${DAVID(62,wear)}</span><div class="bubble">
-    <b class="who">${esc(q.who)} 이야기</b> <span class="ref">${esc(q.ref)}</span><br>${esc(q.story)}</div></div>
+    ${q.who?`<b class="who">${esc(q.who)} 이야기</b> <span class="ref">${esc(q.ref)}</span><br>${esc(q.story)}`:`<b class="who">${esc(play.L.code||"")}</b> <span class="ref">${esc(play.L.t.replace(/^\S+\s/,""))}</span><br>${esc(play.L.sub)}`}</div></div>
   <div class="card">
     <div class="qhead"><span class="qno">${play.retry?"다시 도전":it.fix?"고치기 문제":"문제"}</span>${play.combo>=2?`<span class="combo">${play.combo}연속!</span>`:""}
       <span class="sp"></span></div>
     ${body}
-    ${D.hint!==0?`<button class="hintbtn" id="hintBtn">힌트 보기${D.hint==="free"?"":` (달란트 ${D.hint}개)`}</button><div id="hint"></div>`:""}
+    ${D.hint!==0&&q.w?`<button class="hintbtn" id="hintBtn">힌트 보기${D.hint==="free"?"":` (달란트 ${D.hint}개)`}</button><div id="hint"></div>`:""}
   </div><div id="fb"></div>`;
   bindHud(()=>{stopTimer();home()});
   on("hintBtn",()=>{
@@ -940,15 +980,17 @@ function question(it){
       
       app.querySelectorAll("#ch .choice").forEach(c=>c.onclick=()=>pick(it,q,+c.dataset.i,c));
     });
-  }else app.querySelectorAll("#ch .choice").forEach(b=>b.onclick=()=>pick(it,q,+b.dataset.i,b));
+  }else if(q.multi)multiPick(it,q);
+  else app.querySelectorAll("#ch .choice").forEach(b=>b.onclick=()=>pick(it,q,+b.dataset.i,b));
   runTimer(it);
 }
 function pick(it,q,i,btn){
   if(play.over)return;
   const fb=document.getElementById("fb");
   if(i!==q.a){
-    sfx("bad");btn.classList.add("no");btn.disabled=true;it.first=false;
+    sfx("bad");btn.classList.add("no");btn.disabled=true;it.first=false;it.miss=(it.miss||0)+1;
     if(hurt())return;
+    if(q.noMean){if(it.miss>=2)reveal(it,q);else fb.innerHTML=`<div class="panel bad"><h2>아니야! 다시 골라 봐.</h2></div>`;return}
     const wd=q.w[i],nm2=q.lab?`이 문장의 '${q.lab}'`:`'${NAME(wd)}'`;
     fb.innerHTML=play.D.info
       ?`<div class="panel bad"><div class="scene">${JONATHAN(50)}<div style="flex:1;min-width:0"><h2>앗, 다시 생각해 보자!</h2>
@@ -964,7 +1006,40 @@ function pick(it,q,i,btn){
   if(it.first){play.combo++;play.maxCombo=Math.max(play.maxCombo,play.combo);const g=((play.combo>=5?3:play.combo>=3?2:1)+(play.li>=6?1:0))*(mode==="challenge"?2:1);play.earned+=g;setTimeout(()=>addTal(g,btn),200);
     play.combo>=3?sfx("combo",play.combo):sfx("good");const r=btn.getBoundingClientRect();confetti(play.combo>=3?60:30,r.left+r.width/2,r.top)}
   else sfx("good");
-  meanQuiz(it,q);
+  if(q.noMean)bookDone(it,q);else meanQuiz(it,q);
+}
+/* 책 꼴 문제: 맞히면 1초 뒤 다음 / 두 번 틀리면 정답·풀이를 보여 주고 주머니에 넣고 다음 */
+function bookDone(it,q){
+  const w=ansW(q);
+  if(it.first){play.perfect++;if(okW(w))master(w,1)}else{play.wrong.push(it.qi);if(okW(w))bagAdd(w)}
+  const pl=play;setTimeout(()=>{if(play===pl&&!play.over)nextStep()},1100);
+}
+function reveal(it,q){
+  stopTimer();const ans=q.multi||[q.a];
+  app.querySelectorAll("#ch .choice").forEach(b=>{b.disabled=true;if(ans.includes(+b.dataset.i))b.classList.add("ok")});
+  const w=ansW(q);if(okW(w)){bagAdd(w);master(w,-1)}
+  play.wrong.push(it.qi);play.combo=0;
+  document.getElementById("fb").innerHTML=`<div class="panel think"><h2>정답은 초록색이에요</h2>${q.why?`<p>${esc(q.why)}</p>`:""}</div>`;
+  const pl=play;setTimeout(()=>{if(play===pl&&!play.over)nextStep()},q.why?3200:2000);
+}
+/* 두 개 고르기(1-1-8) */
+function multiPick(it,q){
+  const sel=new Set(),cnt=document.getElementById("mcount");
+  app.querySelectorAll("#ch .choice").forEach(b=>b.onclick=()=>{
+    if(play.over||b.disabled)return;const i=+b.dataset.i;
+    if(sel.has(i)){sel.delete(i);b.classList.remove("sel")}else{sel.add(i);b.classList.add("sel")}
+    sfx("tap");cnt.textContent=`두 개를 골라요 (${sel.size}/2)`;
+    if(sel.size<2)return;
+    const ok=q.multi.every(k=>sel.has(k));
+    if(ok){stopTimer();app.querySelectorAll("#ch .choice").forEach(x=>{x.disabled=true;x.classList.remove("sel");if(sel.has(+x.dataset.i))x.classList.add("ok")});
+      if(it.first){play.combo++;play.maxCombo=Math.max(play.maxCombo,play.combo);const g=((play.combo>=5?3:play.combo>=3?2:1)+1)*(mode==="challenge"?2:1);play.earned+=g;setTimeout(()=>addTal(g,b),200);sfx("good");confetti(40)}else sfx("good");
+      bookDone(it,q);return}
+    sfx("bad");it.first=false;it.miss=(it.miss||0)+1;
+    app.querySelectorAll("#ch .choice.sel").forEach(x=>{x.classList.remove("sel");if(!q.multi.includes(+x.dataset.i)){x.classList.add("no");x.disabled=true}});
+    sel.clear();cnt.textContent="두 개를 골라요 (0/2)";
+    if(hurt())return;
+    if(it.miss>=2)reveal(it,q);else document.getElementById("fb").innerHTML=`<div class="panel bad"><h2>둘 다 맞아야 해요! 다시 골라 봐.</h2></div>`;
+  });
 }
 /* 정답 → 그 낱말 뜻 한 번 더 찾기 → 설명과 비교 */
 function meanQuiz(it,q){
@@ -1003,7 +1078,7 @@ function meanQuiz(it,q){
 /* 단계 끝: 다시 떠올리기 (뜻만 보고 낱말 찾기) */
 function recall(it){
   let opts=shuffle([...new Set(it.set)].filter(x=>x!==it.w));
-  if(play.li>=7)opts=opts.concat(shuffle(Object.keys(DICT).filter(x=>x!==it.w&&!it.set.includes(x)&&!x.includes(":"))));
+  if(play.li>=7||opts.length<3)opts=opts.concat(shuffle(Object.keys(DICT).filter(x=>x!==it.w&&!it.set.includes(x)&&!x.includes(":"))));
   opts=shuffle([it.w,...opts.slice(0,Math.min(play.D.mean,5)-1)]);
   const msg=it.old?"앞 단계에서 배운 낱말이야! 기억나?":"이번 단계에서 배운 낱말이야. 뜻만 보고 찾아 봐!";
   app.innerHTML=`${hud("단계 지도")}${topBar()}
@@ -1041,6 +1116,15 @@ function gameOver(){
   bindHud();sfx("bad");
   on("again",()=>{sfx("tap");startLevel(li)});on("prev",()=>{sfx("tap");startLevel(li-1)});on("toMap",()=>{sfx("tap");home()});
 }
+/* 판마다 걸린 시간(관리자 화면에서 평균을 본다) */
+function logTime(li){if(!play||play.retry)return;const t=store.get("times",[]);t.push({p:partI,li,sec:Math.round((Date.now()-play.t0)/1000),day:today()});store.set("times",t.slice(-40))}
+function avgMin(){const t=store.get("times",[]).slice(-10);return t.length?(t.reduce((a,b)=>a+b.sec,0)/t.length/60).toFixed(1):null}
+/* 구역 안내: 구역 3판 별 3개 개수, 열렸으면 싸우러 가기 */
+function zoneLine(z){const st=zoneStages(z),n=st.filter(i=>best(i)>=3).length,b=bosses["z"+z],nm=isFinal(z)?PARTS[partI].final+" 보스":"구역 "+(z+1)+" 보스";
+  return b?`🏆 ${nm}를 이겼어요 <button class="btn ghost sm" id="toBoss">다시 싸우기</button>`
+   :zoneOpen(z)?`⚔️ ${nm}전이 열렸어요! <button class="btn sm" id="toBoss">싸우러 가기</button>`
+   :`🔒 ${st[0]+1}~${st[st.length-1]+1}판을 모두 별 3개로 깨면 ${nm}전! (지금 ⭐⭐⭐ ${n}/${st.length}판)`}
+function zonePanel(li){if(play.retry)return"";const z=zoneOf(li);return `<div class="bossrow ${bosses["z"+z]?"won":""}" style="flex-direction:column">${zoneLine(z)}</div>`}
 function levelResult(){
   stopTimer();
   const t=play.items.length,li=play.li;
@@ -1051,10 +1135,10 @@ function levelResult(){
     if(st>before){unlocked=before===0&&li+1<LEVELS.length;ST[li]=st;best=true;save()}
     chalNew=mode==="practice"&&!wasC&&challengeOpen();}
   let newCard=false;const chestOK=!play.retry&&st>0;
-  if(chestOK&&!cards[li]){cards[li]=true;store.set("cards",cards);newCard=true}
+  if(chestOK&&!zoned()&&!cards[li]){cards[li]=true;store.set("cards",cards);newCard=true}
   else if(!play.wrong.length)bonus=2;
   const msg=play.retry?(play.wrong.length?"조금만 더! 뜻을 소리 내어 따라 말해 보자.":"헷갈렸던 낱말 뜻을 다 기억했어!")
-    :li===LEVELS.length-1&&st>0?`${call()}, 10단계까지 다 깼어! 진짜 말씀 낱말 박사야!`
+    :li===LEVELS.length-1&&st>0?`${call()}, ${PARTS[partI].name}을 다 깼어! 진짜 말씀 낱말 박사야!`
     :st===3?`${call()}, 낱말도 뜻도 다 알았구나!`:st===2?"잘했어! 헷갈린 것만 다시 하면 별 3개!":"괜찮아, 헷갈린 것을 한 번 더 해 보자!";
   app.innerHTML=`${hud()}
   <div class="result"><div class="chars"><span class="bob">${DAVID(80,wear)}</span>${JONATHAN(70)}</div>
@@ -1063,7 +1147,7 @@ function levelResult(){
    ${unlocked?`<span class="combo pop" style="background:var(--sky)">${li+2}단계가 열렸어요! 더 어려워져요</span>`:""}
    ${newCard?`<p style="font-family:var(--display);color:var(--fire);font-size:20px">새 인물 카드를 얻었어요!</p>${cardHtml(li)}`:""}
    ${chestOK?`<button class="btn gold" id="chest">보물상자 열기</button>`:""}
-   ${!play.retry&&bossOpen(li)&&!bosses[li]?`<div class="panel" style="background:#F3E3C3;text-align:center;align-items:center"><h2 style="color:var(--fire)">⚔️ 골리앗 보스전이 열렸어요!</h2><p>별 3개를 받았어요. 낱말을 떠올려 물맷돌을 던지자!</p><button class="btn" id="toBoss">싸우러 가기</button></div>`
+   ${zoned()?zonePanel(li):!play.retry&&bossOpen(li)&&!bosses[li]?`<div class="panel" style="background:#F3E3C3;text-align:center;align-items:center"><h2 style="color:var(--fire)">⚔️ 골리앗 보스전이 열렸어요!</h2><p>별 3개를 받았어요. 낱말을 떠올려 물맷돌을 던지자!</p><button class="btn" id="toBoss">싸우러 가기</button></div>`
      :!play.retry&&st>0&&st<3&&!bosses[li]?`<p style="font-family:var(--display);color:var(--fire)">🔒 별 3개를 받으면 골리앗 보스전이 열려요!</p>`:""}
    ${chalNew?`<div class="panel" style="background:#FCE7D6;text-align:center"><h2 style="color:var(--fire)">도전 모드가 열렸어요!</h2><p>연습 10단계를 모두 깼어요. 이제 하트와 시간이 있는 도전 모드에 도전해 보세요. 달란트를 두 배로 받아요!</p></div>`:""}
    <div class="tally"><span>낱말과 뜻 모두 한 번에</span><span>${play.perfect}/${t}</span>
@@ -1080,7 +1164,7 @@ function levelResult(){
      <button class="btn ghost" id="toMap">단계 지도</button></div></div>`;
   bindHud();
   if(!play.retry)for(let k=0;k<st;k++)setTimeout(()=>sfx("star",k),300+k*350);
-  setTimeout(()=>{if(bonus){addTal(bonus,document.getElementById("totN"));document.getElementById("totN").textContent=talents+"개"}
+  setTimeout(()=>{if(bonus){const tn=document.getElementById("totN");addTal(bonus,tn);if(tn)tn.textContent=talents+"개"}
     if(unlocked)setTimeout(()=>sfx("unlock"),400);
     if(chalNew){setTimeout(()=>{sfx("fanfare");confetti(160)},900);}
     if(st===3||(play.retry&&!play.wrong.length)){sfx("fanfare");confetti(140)}},300+st*350);
@@ -1090,7 +1174,8 @@ function levelResult(){
     const n=(2+Math.floor(Math.random()*5))*(mode==="challenge"?2:1);
     b.classList.add("pop");b.textContent="보물상자에서 달란트 "+n+"개!";sfx("buy");confetti(90);addTal(n,b);
     const t=document.getElementById("totN");if(t)t.textContent=talents+"개";});
-  on("toBoss",()=>{sfx("tap");bossFight(li)});
+  on("toBoss",()=>{sfx("tap");bossFight(zoned()?"z"+zoneOf(li):li)});
+  logTime(li);
   on("retry",()=>{sfx("tap");startLevel(li,wr)});on("nextLv",()=>{sfx("tap");startLevel(li+1)});
   on("again",()=>{sfx("tap");startLevel(li)});on("toShop",()=>{sfx("tap");shop()});on("toMap",()=>{sfx("tap");home()});
 }
@@ -1111,8 +1196,8 @@ const GOLIATH=(s=110)=>`<svg width="${s}" height="${s*1.25}" viewBox="0 0 80 100
 <ellipse cx="14" cy="66" rx="9" ry="13" fill="#C9A43B" stroke="#8a6f1c" stroke-width="2"/></svg>`;
 const plainW=w=>!w.includes(":")&&!/\s/.test(w);
 const tileOK=w=>plainW(w)&&w.length>=2&&w.length<=5;
-const stageWords=i=>[...new Set(LEVELS[i].qs.map(q=>q.w[q.a]))].filter(plainW);
-const bossOpen=i=>(stars[i]||0)>=3||(starsC[i]||0)>=3;
+const stageWords=i=>[...new Set(LEVELS[i].qs.map(ansW))].filter(w=>w&&plainW(w)&&DICT[w]);
+const bossOpen=i=>isAdm()||(stars[i]||0)>=3||(starsC[i]||0)>=3;
 const learned=()=>Object.keys(mastery).filter(w=>plainW(w)&&DICT[w]);
 
 /* 문제 하나 그리기: 뜻 → 낱말 (보기 또는 글자 조각). done(맞음?) 을 부른다 */
@@ -1147,18 +1232,28 @@ function wordAsk(box,w,useTiles,done){
   }
 }
 
-function bossFight(li){
-  stopTimer();mapView=li;
-  const L=LEVELS[li],hpMax=3+Math.floor(li/3);
-  const pool=[...new Set([...shuffle(bag).slice(0,2),...shuffle(stageWords(li)),...(li>0?shuffle(stageWords(li-1)).slice(0,2):[])])].filter(w=>DICT[w]);
-  const B={li,hp:hpMax,hearts:3,n:0,pool,over:false};
+/* 보스 설정: 숫자 = 인물 이야기 판 보스, "z0" = 책 파트 구역 보스 */
+function bossCfg(id){
+  if(typeof id==="string"){const z=+id.slice(1),st=zoneStages(z),fin=isFinal(z);
+    const words=[].concat(...st.map(stageWords));
+    return {id,key:id,hp:3+z,pool:[...new Set([...shuffle(bag).slice(0,2),...shuffle(words)])].filter(w=>DICT[w]),
+      theme:fin?"alk":"gol",label:fin?PARTS[partI].final+" 보스":`구역 ${z+1} 보스`,next:st[st.length-1]+1,
+      trophy:fin?`${PARTS[partI].name} ${PARTS[partI].final} 승리`:`${PARTS[partI].name} 구역 ${z+1} 보스 승리`,back:st[0]}}
+  const li=id;return {id,key:li,hp:3+Math.floor(li/3),pool:[...new Set([...shuffle(bag).slice(0,2),...shuffle(stageWords(li)),...(li>0?shuffle(stageWords(li-1)).slice(0,2):[])])].filter(w=>DICT[w]),
+    theme:"gol",label:`${li+1}단계 보스`,next:li+1,trophy:`${esc(LEVELS[li].hero||"")} 이야기 보스 승리`,back:li}
+}
+function bossFight(id){
+  stopTimer();const C=bossCfg(id);mapView=C.back;
+  if(C.pool.length<2){toast("이 구역 낱말이 모자라요");return}
+  const B={hp:C.hp,hearts:3,n:0,over:false},alk=C.theme==="alk";
+  const foe=()=>alk?`<div class="board" id="gol">${Array.from({length:C.hp},(_,k)=>`<i class="bk ${k<B.hp?"":"gone"}"></i>`).join("")}</div>`:`<span id="gol">${GOLIATH(104)}</span>`;
   const render=()=>{
-    const w=B.pool[B.n%B.pool.length];
+    const w=C.pool[B.n%C.pool.length];
     app.innerHTML=`${hud("단계 지도")}
-    <div class="arena" id="arena">
-      <div class="side"><span class="bob" id="dav">${DAVID(76,[...wear,"sling"])}</span><span class="hearts">${Array.from({length:3},(_,k)=>`<span class="${k<B.hearts?"":"lost"}">♥</span>`).join("")}</span></div>
-      <div class="vs">${li+1}단계 보스</div>
-      <div class="side"><span id="gol">${GOLIATH(104)}</span><div class="hp"><i style="width:${B.hp/hpMax*100}%"></i></div><small>골리앗 ${B.hp}/${hpMax}</small></div>
+    <div class="arena ${alk?"alk":""}" id="arena">
+      <div class="side"><span class="bob" id="dav">${DAVID(76,[...wear,"sling"])}</span><span class="hearts">${Array.from({length:3},(_,k)=>`<span class="${k<B.hearts?"":"lost"}">${alk?"⚪":"♥"}</span>`).join("")}</span></div>
+      <div class="vs">${esc(C.label)}</div>
+      <div class="side">${foe()}<div class="hp"><i style="width:${B.hp/C.hp*100}%"></i></div><small>${alk?"남은 검은 돌":"골리앗"} ${B.hp}/${C.hp}</small></div>
       <span class="stone" id="stone"></span>
     </div>
     <div class="card" id="bq"></div><div id="fb"></div>`;
@@ -1167,48 +1262,52 @@ function bossFight(li){
       const ar=document.getElementById("arena");
       if(ok){bagDel(w);master(w,1);sfx("flip");ar.classList.add("throw");
         setTimeout(()=>{B.hp--;sfx("good");const g=document.getElementById("gol");if(g)g.classList.add("hit");
-          const bar=ar.querySelector(".hp i");if(bar)bar.style.width=(B.hp/hpMax*100)+"%";
-          if(B.hp<=0){B.over=true;setTimeout(()=>bossWin(li),700)}else setTimeout(()=>{B.n++;render()},900)},450)}
+          if(alk){const k=g&&g.querySelectorAll(".bk:not(.gone)");if(k&&k.length)k[k.length-1].classList.add("gone")}
+          const bar=ar.querySelector(".hp i");if(bar)bar.style.width=(B.hp/C.hp*100)+"%";
+          if(B.hp<=0){B.over=true;setTimeout(()=>bossWin(id),700)}else setTimeout(()=>{B.n++;render()},900)},450)}
       else{bagAdd(w);sfx("bad");B.hearts--;ar.classList.add("stomp");
-        document.getElementById("fb").innerHTML=`<div class="panel bad"><h2>골리앗이 쿵! 정답은 「${esc(NAME(w))}」</h2><p>${esc(M(w))}</p></div>`;
-        if(B.hearts<=0){B.over=true;setTimeout(()=>bossLose(li),1800)}else setTimeout(()=>{B.n++;render()},2000)}
+        document.getElementById("fb").innerHTML=`<div class="panel bad"><h2>${alk?"내 흰 돌이 튕겨 나갔어요!":"골리앗이 쿵!"} 정답은 「${esc(NAME(w))}」</h2><p>${esc(M(w))}</p></div>`;
+        if(B.hearts<=0){B.over=true;setTimeout(()=>bossLose(id),1800)}else setTimeout(()=>{B.n++;render()},2000)}
     });
   };
   render();
 }
-function bossWin(li){
-  const first=!bosses[li];bosses[li]={day:today()};store.set("bosses",bosses);
-  const prize=first?10*(mode==="challenge"?2:1):3;
+function bossWin(id){
+  const C=bossCfg(id),first=!bosses[C.key];bosses[C.key]={day:today()};store.set(pk("bosses"),bosses);
+  const prize=first?10*(mode==="challenge"?2:1):3,total=zoned()?zoneCount():LEVELS.length,alk=C.theme==="alk";
   app.innerHTML=`${hud()}
-  <div class="result"><div class="chars"><span class="bob">${DAVID(84,[...wear,"sling"])}</span><span style="transform:rotate(80deg);display:inline-block;opacity:.8">${GOLIATH(70)}</span></div>
-   <h1 style="font-size:30px;color:var(--olive-dark)">골리앗을 무찔렀어요!</h1>
-   ${first?`<div class="trophy pop">🏆<b>${li+1}단계 업적</b><small>${esc(LEVELS[li].hero)} 이야기 보스 승리</small></div>`:`<p>다시 이겼어요! 업적은 이미 있어요.</p>`}
-   <p>업적 ${Object.keys(bosses).length}/${LEVELS.length}</p>
+  <div class="result"><div class="chars"><span class="bob">${DAVID(84,[...wear,"sling"])}</span>${alk?"":`<span style="transform:rotate(80deg);display:inline-block;opacity:.8">${GOLIATH(70)}</span>`}</div>
+   <h1 style="font-size:30px;color:var(--olive-dark)">${alk?"검은 돌을 다 쳐냈어요!":"골리앗을 무찔렀어요!"}</h1>
+   ${first?`<div class="trophy pop">🏆<b>${esc(C.label)} 업적</b><small>${C.trophy}</small></div>`:`<p>다시 이겼어요! 업적은 이미 있어요.</p>`}
+   <p>업적 ${Object.keys(bosses).length}/${total}</p>
    <span class="combo pop" id="prize">달란트 +${prize}</span>
-   <div class="actions">${li+1<LEVELS.length&&isOpen(li+1)?`<button class="btn" id="nextLv">${li+2}단계로!</button>`:""}
+   <div class="actions">${C.next<LEVELS.length&&isOpen(C.next)?`<button class="btn" id="nextLv">다음 판으로!</button>`:""}
      <button class="btn ghost" id="toAch">업적 보기</button><button class="btn ghost" id="toMap">단계 지도</button></div></div>`;
   bindHud();sfx("fanfare");confetti(160);setTimeout(()=>addTal(prize,document.getElementById("prize")),500);
-  on("nextLv",()=>{sfx("tap");startLevel(li+1)});on("toAch",()=>{sfx("tap");achieve()});on("toMap",()=>{sfx("tap");mapView=null;home()});
+  on("nextLv",()=>{sfx("tap");startLevel(C.next)});on("toAch",()=>{sfx("tap");achieve()});on("toMap",()=>{sfx("tap");mapView=null;home()});
 }
-function bossLose(li){
+function bossLose(id){
+  const alk=bossCfg(id).theme==="alk";
   app.innerHTML=`${hud()}
-  <div class="result"><div class="chars"><span class="bob">${DAVID(80,wear)}</span>${GOLIATH(80)}</div>
-   <h1 style="font-size:30px;color:var(--no)">골리앗이 아직 버티고 있어요</h1>
+  <div class="result"><div class="chars"><span class="bob">${DAVID(80,wear)}</span>${alk?"":GOLIATH(80)}</div>
+   <h1 style="font-size:30px;color:var(--no)">${alk?"검은 돌이 아직 남아 있어요":"골리앗이 아직 버티고 있어요"}</h1>
    <p style="max-width:30em;line-height:1.6">틀린 낱말은 주머니에 넣어 두었어요. 다시 떠올려 보면 이길 수 있어!</p>
    <div class="actions"><button class="btn" id="again">다시 싸우기!</button><button class="btn ghost" id="toMap">단계 지도</button></div></div>`;
   bindHud();sfx("bad");
-  on("again",()=>{sfx("tap");bossFight(li)});on("toMap",()=>{sfx("tap");home()});
+  on("again",()=>{sfx("tap");bossFight(id)});on("toMap",()=>{sfx("tap");home()});
 }
 function achieve(){
+  const Z=zoned(),rows=Z?Array.from({length:zoneCount()},(_,z)=>({id:"z"+z,b:bosses["z"+z],op:zoneOpen(z),
+      t:isFinal(z)?PARTS[partI].final+" 보스":`구역 ${z+1} 보스`,sub:(()=>{const st=zoneStages(z);return `${st[0]+1}~${st[st.length-1]+1}판 · 별 3개 ${st.filter(i=>best(i)>=3).length}/${st.length}판`})()}))
+    :LEVELS.map((L,i)=>({id:i,b:bosses[i],op:bossOpen(i),t:`${i+1}단계 · ${L.hero}`,sub:`별 3개 모으기 (지금 ${starStr(best(i))})`}));
   app.innerHTML=`${hud("처음으로")}
-  <h1 style="font-size:30px;color:var(--olive-dark)">업적</h1>
-  <p style="color:var(--soft)">단계를 별 3개로 깨면 골리앗 보스전이 열려요. 이기면 트로피! 지금 ${Object.keys(bosses).length}/${LEVELS.length}개.</p>
-  <div class="achs">${LEVELS.map((L,i)=>{const b=bosses[i],op=bossOpen(i);
-    return `<div class="ach ${b?"on":""}"><span class="big">${b?"🏆":op?"⚔️":"🔒"}</span><b>${i+1}단계 · ${esc(L.hero)}</b>
-      <small>${b?"골리앗을 무찔렀어요":op?"보스전이 열렸어요!":`별 3개 모으기 (지금 ${starStr(Math.max(stars[i]||0,starsC[i]||0))})`}</small>
-      ${op?`<button class="btn sm ${b?"ghost":""}" data-b="${i}">${b?"다시 싸우기":"싸우러 가기"}</button>`:""}</div>`}).join("")}</div>`;
+  <h1 style="font-size:30px;color:var(--olive-dark)">업적 · ${esc(PARTS[partI].name)}</h1>
+  <p style="color:var(--soft)">${Z?"구역의 판을 모두 별 3개로 깨면 보스전이 열려요.":"단계를 별 3개로 깨면 골리앗 보스전이 열려요."} 이기면 트로피! 지금 ${Object.keys(bosses).length}/${rows.length}개.</p>
+  <div class="achs">${rows.map(r=>`<div class="ach ${r.b?"on":""}"><span class="big">${r.b?"🏆":r.op?"⚔️":"🔒"}</span><b>${esc(r.t)}</b>
+      <small>${r.b?"이겼어요":r.op?"보스전이 열렸어요!":esc(r.sub)}</small>
+      ${r.op?`<button class="btn sm ${r.b?"ghost":""}" data-b="${r.id}">${r.b?"다시 싸우기":"싸우러 가기"}</button>`:""}</div>`).join("")}</div>`;
   bindHud(home);
-  app.querySelectorAll("[data-b]").forEach(b=>b.onclick=()=>{sfx("tap");bossFight(+b.dataset.b)});
+  app.querySelectorAll("[data-b]").forEach(b=>b.onclick=()=>{sfx("tap");const v=b.dataset.b;bossFight(v.startsWith("z")?v:+v)});
 }
 function daily(){
   const pick=[...new Set([...shuffle(bag),...shuffle(learned()).sort((a,b)=>(mastery[a]||0)-(mastery[b]||0))])].filter(w=>DICT[w]).slice(0,3);
@@ -1240,7 +1339,7 @@ function daily(){
 /* ================= 외운 낱말 보기 ================= */
 function dict(){
   const seen=new Set();
-  const groups=LEVELS.map((L,i)=>({i,ws:[...new Set(L.qs.map(q=>q.w[q.a]))].filter(w=>!seen.has(w)&&seen.add(w))}));
+  const groups=LEVELS.map((L,i)=>({i,ws:[...new Set(L.qs.map(ansW))].filter(w=>w&&DICT[w]&&!seen.has(w)&&seen.add(w))}));
   const total=seen.size,known=[...seen].filter(w=>(mastery[w]||0)>=3).length;
   app.innerHTML=`${hud("처음으로")}
   <h1 style="font-size:30px;color:var(--olive-dark)">외운 낱말 보기</h1>
@@ -1254,15 +1353,15 @@ function dict(){
 
 /* ================= 성경 인물 카드 ================= */
 const CARD_COLORS=["#3E6FA8","#8A5A2B","#7A4FA0","#C0562F","#3E8A5C","#2F7E86","#B9461F","#5B5FA8","#C29321","#2F5E96"];
-function cardHtml(i){const L=LEVELS[i],c=CARD_COLORS[i%CARD_COLORS.length];
+function cardHtml(i){const L=LEVELS0[i],c=CARD_COLORS[i%CARD_COLORS.length];
   return `<div class="hcard" style="--cc:${c}"><span class="hn">${i+1}</span><b>${esc(L.hero)}</b><p>${esc(L.card)}</p><small>${esc(L.cref)}</small></div>`}
 function cardsScreen(){
   app.innerHTML=`${hud("처음으로")}
   <h1 style="font-size:30px;color:var(--olive-dark)">성경 인물 카드</h1>
-  <p style="color:var(--soft)">단계를 깨면 그 단계 인물 카드를 얻어요. ${Object.keys(cards).length}/${LEVELS.length}장 모았어요.</p>
-  <div class="hcards">${LEVELS.map((L,i)=>cards[i]?`<button class="hbtn" data-i="${i}">${cardHtml(i)}</button>`:`<div class="hcard locked"><span class="hn">${i+1}</span><b>?</b><p>${i+1}단계를 깨면 열려요</p></div>`).join("")}</div>`;
+  <p style="color:var(--soft)">단계를 깨면 그 단계 인물 카드를 얻어요. ${Object.keys(cards).length}/${LEVELS0.length}장 모았어요.</p>
+  <div class="hcards">${LEVELS0.map((L,i)=>cards[i]?`<button class="hbtn" data-i="${i}">${cardHtml(i)}</button>`:`<div class="hcard locked"><span class="hn">${i+1}</span><b>?</b><p>${i+1}단계를 깨면 열려요</p></div>`).join("")}</div>`;
   bindHud(home);
-  app.querySelectorAll(".hbtn").forEach(b=>b.onclick=()=>{const L=LEVELS[+b.dataset.i];sfx("tap");});
+  app.querySelectorAll(".hbtn").forEach(b=>b.onclick=()=>{sfx("tap");});
 }
 
 /* ================= 다윗 꾸미기 ================= */
@@ -1432,5 +1531,6 @@ document.addEventListener("visibilitychange",()=>{
   else if(hiddenAt&&pinSaved&&Date.now()-hiddenAt>60000){hiddenAt=0;lockScreen()}
 });
 
+setPart(store.get("part",0));
 pinSaved?lockScreen():lockScreen("set");
 </script>
