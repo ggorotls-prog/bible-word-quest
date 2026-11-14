@@ -1443,6 +1443,7 @@ function bible(reason){
   <div class="bibbar">
     ${pending.size?`<button class="btn gold" id="confirm">다 읽었어요! ${pending.size}장 → 게임 ${pending.size*MIN_PER_CH}분</button>`:`<p style="color:var(--soft);text-align:center">읽은 장을 고르면 게임 시간이 생겨요</p>`}
     ${timeLeft>0?`<button class="btn ghost" id="toGame">게임하러 가기 (${fmtTime(timeLeft)} 남음)</button>`:""}
+    <button class="dad" id="giftBtn">🎁 부모님: 상으로 게임 시간 주기</button>
   </div>`;
   on("tabOt",()=>{bibTab="ot";bibBook=null;sfx("tap");bible(reason)});
   on("tabNt",()=>{bibTab="nt";bibBook=null;sfx("tap");bible(reason)});
@@ -1457,6 +1458,34 @@ function bible(reason){
   });
   on("toGame",()=>{gated=false;bibBook=null;sfx("good");home()});
   on("admBtn",()=>{sfx("tap");adminLogin()});
+  on("giftBtn",()=>{sfx("tap");giftTime(reason)});
+}
+/* 부모님 상(2026-11-14 룡: 양보했을 때처럼 상으로 시간 주기). 앱 비밀번호 4자리를 눌러야 시간을 고를 수 있다 */
+function giftTime(reason){
+  const box=document.createElement("div");box.className="admbox";document.body.appendChild(box);
+  const close=()=>box.remove();box.onclick=e=>{if(e.target===box)close()};
+  let typed="";
+  const pin=()=>{box.innerHTML=`<form onsubmit="return false"><b style="font-family:var(--display);font-size:20px;color:var(--olive-dark)">부모님 비밀번호</b>
+      <small style="color:var(--soft)">앱을 켤 때 누르는 4자리</small>
+      <div class="pindots" id="gpd">${"<i></i>".repeat(4)}</div><p id="gMsg" style="color:var(--no);min-height:1.2em;margin:0;font-size:14px"></p>
+      <div class="pinpad">${[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map(k=>k===""?"<span></span>":`<button type="button" class="pk" data-k="${k}">${k}</button>`).join("")}</div>
+      <button type="button" class="btn ghost sm" id="gNo">닫기</button></form>`;
+    box.querySelector("#gNo").onclick=close;
+    const draw=()=>box.querySelectorAll("#gpd i").forEach((d,i)=>d.classList.toggle("on",i<typed.length));
+    box.querySelectorAll(".pk").forEach(b=>b.onclick=()=>{const k=b.dataset.k;sfx("tap");
+      if(k==="⌫"){typed=typed.slice(0,-1);draw();return}
+      if(typed.length>=4)return;typed+=k;draw();if(typed.length<4)return;
+      setTimeout(()=>{if(pinHash(typed)===pinSaved){sfx("good");pick()}else{sfx("bad");typed="";draw();box.querySelector("#gMsg").textContent="비밀번호가 달라요"}},150)})};
+  const pick=()=>{box.innerHTML=`<form onsubmit="return false"><b style="font-family:var(--display);font-size:20px;color:var(--olive-dark)">상으로 줄 게임 시간</b>
+      <small style="color:var(--soft)">잘한 일을 칭찬해 주세요</small>
+      <div class="row2">${[5,10,15,20].map(m=>`<button type="button" class="btn gold sm" data-m="${m}">${m}분</button>`).join("")}</div>
+      <button type="button" class="btn ghost sm" id="gNo">닫기</button></form>`;
+    box.querySelector("#gNo").onclick=close;
+    box.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{const m=+b.dataset.m;close();
+      timeLeft+=m*60;saveTime();const g=store.get("gifts",[]);g.push({day:today(),min:m});store.set("gifts",g.slice(-60));
+      sfx("fanfare");confetti(140);toast(`부모님이 상으로 게임 ${m}분을 주셨어요!`);bible(reason)})};
+  if(!pinSaved){pick();return}
+  pin();
 }
 
 /* 관리자 로그인: 업무 기록(기록 앱)과 같은 아이디·비밀번호. 맞으면 체크 없이 게임(이번에 켠 동안만). */
