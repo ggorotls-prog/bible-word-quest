@@ -42,7 +42,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 @keyframes bob{50%{transform:translateY(-6px)}}
 .name-row{display:flex;gap:8px;width:100%;max-width:360px}
 .name-row input{flex:1;min-width:0;font:inherit;font-size:20px;padding:12px 14px;border-radius:14px;border:3px solid var(--line);background:var(--scroll);color:var(--ink)}
-.row2{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.row2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 @media (max-width:420px){.row2{grid-template-columns:1fr 1fr}.row2 .btn:first-child{grid-column:1/-1}}
 .clock{background:var(--scroll);border-radius:99px;padding:5px 11px;font-family:var(--display);font-size:17px;color:var(--sky);box-shadow:0 3px 0 var(--line);font-variant-numeric:tabular-nums}
 .clock.low{color:#fff;background:var(--no);animation:pop 1s infinite}
@@ -88,6 +88,38 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .lv small{color:var(--soft);font-size:13.5px}
 .lv .st{color:var(--gold);letter-spacing:1px}
 .lv[disabled]{opacity:.45;cursor:default}
+.bossrow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;background:#F3E3C3;border-radius:14px;padding:8px 12px;font-family:var(--display);color:var(--olive-dark);text-align:center}
+.bossrow.won{background:#FBEBB5}
+.dailybtn{width:100%;animation:glow 1.6s ease-in-out infinite}
+.arena{position:relative;display:flex;align-items:flex-end;justify-content:space-between;background:linear-gradient(#E9F1F7,#F3E6C8);border-radius:22px;padding:12px 16px 10px;overflow:hidden}
+.arena .side{display:flex;flex-direction:column;align-items:center;gap:4px}
+.arena .vs{font-family:var(--display);color:var(--fire);font-size:18px;align-self:center}
+.arena .hp{width:110px;height:12px;background:#E5D6B5;border-radius:99px;overflow:hidden}
+.arena .hp i{display:block;height:100%;background:var(--no);transition:width .4s}
+.arena small{font-family:var(--display);color:var(--soft)}
+.arena .stone{position:absolute;left:70px;bottom:70px;width:14px;height:14px;border-radius:50%;background:#8d8d8d;opacity:0}
+.arena.throw .stone{animation:throw .45s ease-in forwards}
+@keyframes throw{0%{opacity:1;transform:translate(0,0)}60%{transform:translate(45vw,-40px)}100%{opacity:1;transform:translate(min(60vw,330px),-20px)}}
+#gol.hit{display:inline-block;animation:shake .4s}
+.arena.stomp{animation:shake .4s}
+.slots{display:flex;justify-content:center;gap:8px;min-height:58px}
+.slots span{width:52px;height:56px;border-radius:14px;border:3px dashed var(--line);background:#fff;font-family:var(--display);font-size:28px;display:flex;align-items:center;justify-content:center;color:var(--olive-dark)}
+.slots span.on{border-style:solid;border-color:var(--sky)}
+.slots.right span{border-color:var(--ok);background:#DDF3E3}
+.slots.no{animation:shake .4s}
+.slots .reveal{width:auto;padding:0 18px;border:3px solid var(--ok);background:#DDF3E3}
+.tiles{display:flex;justify-content:center;flex-wrap:wrap;gap:8px}
+.tile{width:56px;height:56px;border-radius:14px;background:#FFF3D6;border:3px solid var(--gold);box-shadow:0 4px 0 var(--line);font-family:var(--display);font-size:26px;color:var(--olive-dark)}
+.tile[disabled]{opacity:.3}
+.trophy{display:flex;flex-direction:column;align-items:center;gap:2px;background:#FBEBB5;border-radius:18px;padding:12px 26px;font-size:44px}
+.trophy b{font-family:var(--display);font-size:20px;font-weight:400;color:var(--olive-dark)}
+.trophy small{font-size:14px;color:var(--soft)}
+.achs{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.ach{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;background:var(--scroll);border-radius:18px;padding:12px;box-shadow:0 4px 0 var(--line)}
+.ach.on{background:#FBEBB5}
+.ach .big{font-size:34px}
+.ach b{font-family:var(--display);font-weight:400;font-size:17px}
+.ach small{color:var(--soft);font-size:13.5px}
 .stage{display:flex;align-items:center;gap:8px}
 .stage .arr{flex:none;width:48px;height:64px;border-radius:16px;background:var(--scroll);box-shadow:0 4px 0 var(--line);font-size:24px;color:var(--olive-dark)}
 .stage .arr[disabled]{opacity:.3}
@@ -638,6 +670,10 @@ let stars=store.get("stars",{}),mastery=store.get("mastery",{}),openAll=store.ge
 let sfxOn=store.get("sfx",true),bgmOn=store.get("bgm",true),voiceOn=store.get("voice",true);
 const save=()=>{store.set("talents",talents);store.set("owned",owned);store.set("wear",wear);store.set("stars",stars);store.set("starsC",starsC);store.set("mastery",mastery)};
 function master(w,d){mastery[w]=Math.max(0,Math.min(3,(mastery[w]||0)+d));save()}
+/* 틀린 낱말 주머니(보스전·오늘의 복습에서 먼저 나온다), 보스전 업적, 오늘의 복습 날짜 */
+let bag=store.get("bag",[]),bosses=store.get("bosses",{}),dailyDay=store.get("daily","");
+function bagAdd(w){if(!w||w.includes(":")||bag.includes(w))return;bag.push(w);store.set("bag",bag)}
+function bagDel(w){const k=bag.indexOf(w);if(k>=0){bag.splice(k,1);store.set("bag",bag)}}
 /* 연습 모드(기본): 하트·시간 없음, 힌트 공짜, 틀리면 뜻 알려 줌. 연습 10단계를 깨면 도전 모드가 열린다 */
 let cards=store.get("cards",{}),mode=store.get("mode","practice"),starsC=store.get("starsC",{}),timeLeft=store.get("time",0);
 const challengeOpen=()=>openAll||(stars[LEVELS.length-1]||0)>0;
@@ -737,7 +773,9 @@ function home(){
     <button class="btn gold" id="toShop">${COIN(22)} 다윗 꾸미기</button>
     <button class="btn ghost" id="toDict">외운 낱말 보기</button>
     <button class="btn ghost" id="toCards">인물 카드 ${Object.keys(cards).length}/${LEVELS.length}</button>
+    <button class="btn ghost" id="toAch">🏆 업적 ${Object.keys(bosses).length}/${LEVELS.length}</button>
   </div>
+  ${dailyDay!==today()&&learned().length+bag.length>=3?`<button class="btn gold dailybtn" id="toDaily">🎁 오늘의 복습 3문제</button>`:""}
   ${nx?`<p style="text-align:center;color:var(--soft)">다음 선물: ${esc(nx.name)} (달란트 ${nx.price}개)</p>`:""}
   <div class="modes">
     <button class="mode ${mode==="practice"?"on":""}" id="mPrac"><b>연습 모드</b><small>하트·시간 없이 끝까지</small></button>
@@ -753,13 +791,17 @@ function home(){
         <span class="st">${op?starStr(st):"🔒 앞 단계를 깨면 열려요"}</span>
         ${op?`<span class="go">${st>0?"다시 하기":"시작!"}</span>`:""}</button>
       <button class="arr" id="mNext" aria-label="다음 단계" ${i===LEVELS.length-1?"disabled":""}>▶</button></div>
-    <div class="pips">${LEVELS.map((_,k)=>`<button class="pip ${k===i?"on":""} ${(S()[k]||0)>0?"clear":""} ${isOpen(k)?"":"lock"}" data-k="${k}" aria-label="${k+1}단계">${(S()[k]||0)>0?"★":k+1}</button>`).join("")}</div>`})()}
+    ${op?`<div class="bossrow ${bosses[i]?"won":""}">${bosses[i]?`🏆 골리앗을 무찔렀어요 <button class="btn ghost sm" id="toBoss">다시 싸우기</button>`
+      :bossOpen(i)?`⚔️ 골리앗 보스전이 열렸어요! <button class="btn sm" id="toBoss">싸우러 가기</button>`
+      :`🔒 별 3개로 깨면 골리앗 보스전이 열려요 (지금 ${starStr(st)})`}</div>`:""}
+    <div class="pips">${LEVELS.map((_,k)=>`<button class="pip ${k===i?"on":""} ${(S()[k]||0)>0?"clear":""} ${isOpen(k)?"":"lock"}" data-k="${k}" aria-label="${k+1}단계">${bosses[k]?"🏆":(S()[k]||0)>0?"★":k+1}</button>`).join("")}</div>`})()}
   <button class="dad" id="dad">${openAll?"아빠용: 단계 잠금 다시 켜기":"아빠용: 모든 단계 열기"}</button>`;
   stopTimer();bindHud();
   on("saveName",()=>{kid=document.getElementById("kidname").value.trim();store.set("kid",kid);sfx("good");home()});
   on("toShop",()=>{sfx("tap");shop()});
   on("toDict",()=>{sfx("tap");dict()});
   on("toCards",()=>{sfx("tap");cardsScreen()});
+  on("toAch",()=>{sfx("tap");achieve()});on("toDaily",()=>{sfx("tap");daily()});on("toBoss",()=>{sfx("tap");bossFight(mapView)});
   on("dad",()=>{openAll=!openAll;store.set("openAll",openAll);if(!challengeOpen())mode="practice";store.set("mode",mode);sfx("tap");home()});
   on("mPrac",()=>{mode="practice";store.set("mode",mode);mapView=null;sfx("tap");home()});
   on("mChal",()=>{if(!cOpen)return;mode="challenge";store.set("mode",mode);mapView=null;sfx("unlock");home()});
@@ -937,17 +979,22 @@ function meanQuiz(it,q){
     <div class="choices one" id="mc">${opts.map(o=>`<button class="choice mean" data-w="${o}">${esc(M(o))}</button>`).join("")}</div></div>`;
   setTimeout(()=>document.getElementById("mq").scrollIntoView({behavior:"smooth",block:"start"}),150);
   
+  /* 찍기 막기(2026-11-14 룡): 뜻은 한 번에 맞혀야 달란트. 두 번 틀리면 정답을 보여 주고 틀린 낱말 주머니에 넣고 넘어간다 */
+  let miss=0;
   app.querySelectorAll("#mc .choice").forEach(b=>b.onclick=()=>{
     if(play.over)return;
     if(b.dataset.w!==w){
-      sfx("bad");b.classList.add("no");b.disabled=true;it.memFirst=false;master(w,-1);
+      sfx("bad");b.classList.add("no");b.disabled=true;it.memFirst=false;miss++;if(miss===1)master(w,-1);bagAdd(w);
       if(!q.lab&&q.w.includes(b.dataset.w))b.insertAdjacentHTML("beforeend",`<span class="x">이건 '${esc(NAME(b.dataset.w))}'의 뜻이에요</span>`);
       if(hurt())return;
+      if(miss>=2){const ok=app.querySelector(`#mc .choice[data-w="${w}"]`);if(ok){ok.classList.add("ok");ok.insertAdjacentHTML("beforeend",`<span class="x" style="color:var(--ok)">정답은 이거예요! 주머니에 넣어 두었어요</span>`)}
+        app.querySelectorAll("#mc .choice").forEach(x=>x.disabled=true);play.wrong.push(it.qi);play.combo=0;
+        const pl=play;setTimeout(()=>{if(play===pl&&!play.over&&document.getElementById("mc"))nextStep()},2200)}
       return}
     b.classList.add("ok");app.querySelectorAll("#mc .choice").forEach(x=>x.disabled=true);sfx("good");
     const perfect=it.first&&it.memFirst;
-    const mg=(it.memFirst?2:1)*(mode==="challenge"?2:1);
-    if(it.memFirst)master(w,1);play.earned+=mg;addTal(mg,b);
+    const mg=it.memFirst?2*(mode==="challenge"?2:1):0;
+    if(it.memFirst){master(w,1);play.earned+=mg;addTal(mg,b)}
     if(perfect)play.perfect++;else play.wrong.push(it.qi);
     /* 딩동댕 설명 칸 없이 바로 다음 문제(2026-11-11 룡: 아이가 「다음」만 누르고 넘어감) */
     const pl=play;setTimeout(()=>{if(play===pl&&!play.over&&document.getElementById("mc"))nextStep()},1100);
@@ -970,7 +1017,7 @@ function recall(it){
   let first=true;
   app.querySelectorAll(".card .choice").forEach(b=>b.onclick=()=>{
     if(play.over)return;
-    if(b.dataset.w!==it.w){sfx("bad");b.classList.add("no");b.disabled=true;if(first)master(it.w,-1);first=false;
+    if(b.dataset.w!==it.w){sfx("bad");b.classList.add("no");b.disabled=true;if(first)master(it.w,-1);first=false;bagAdd(it.w);
       if(play.D.info)b.insertAdjacentHTML("beforeend",`<span class="x" style="font-family:var(--body)">${esc(M(b.dataset.w))}</span>`);
       if(hurt())return;return}
     b.classList.add("ok");app.querySelectorAll(".card .choice").forEach(x=>x.disabled=true);sfx("good");
@@ -1016,6 +1063,8 @@ function levelResult(){
    ${unlocked?`<span class="combo pop" style="background:var(--sky)">${li+2}단계가 열렸어요! 더 어려워져요</span>`:""}
    ${newCard?`<p style="font-family:var(--display);color:var(--fire);font-size:20px">새 인물 카드를 얻었어요!</p>${cardHtml(li)}`:""}
    ${chestOK?`<button class="btn gold" id="chest">보물상자 열기</button>`:""}
+   ${!play.retry&&bossOpen(li)&&!bosses[li]?`<div class="panel" style="background:#F3E3C3;text-align:center;align-items:center"><h2 style="color:var(--fire)">⚔️ 골리앗 보스전이 열렸어요!</h2><p>별 3개를 받았어요. 낱말을 떠올려 물맷돌을 던지자!</p><button class="btn" id="toBoss">싸우러 가기</button></div>`
+     :!play.retry&&st>0&&st<3&&!bosses[li]?`<p style="font-family:var(--display);color:var(--fire)">🔒 별 3개를 받으면 골리앗 보스전이 열려요!</p>`:""}
    ${chalNew?`<div class="panel" style="background:#FCE7D6;text-align:center"><h2 style="color:var(--fire)">도전 모드가 열렸어요!</h2><p>연습 10단계를 모두 깼어요. 이제 하트와 시간이 있는 도전 모드에 도전해 보세요. 달란트를 두 배로 받아요!</p></div>`:""}
    <div class="tally"><span>낱말과 뜻 모두 한 번에</span><span>${play.perfect}/${t}</span>
      ${play.D.hearts?`<span>남은 하트</span><span>${play.hearts}/${play.D.hearts}</span>`:""}
@@ -1041,8 +1090,151 @@ function levelResult(){
     const n=(2+Math.floor(Math.random()*5))*(mode==="challenge"?2:1);
     b.classList.add("pop");b.textContent="보물상자에서 달란트 "+n+"개!";sfx("buy");confetti(90);addTal(n,b);
     const t=document.getElementById("totN");if(t)t.textContent=talents+"개";});
+  on("toBoss",()=>{sfx("tap");bossFight(li)});
   on("retry",()=>{sfx("tap");startLevel(li,wr)});on("nextLv",()=>{sfx("tap");startLevel(li+1)});
   on("again",()=>{sfx("tap");startLevel(li)});on("toShop",()=>{sfx("tap");shop()});on("toMap",()=>{sfx("tap");home()});
+}
+
+/* ================= 골리앗 보스전 · 오늘의 복습 · 업적 (2026-11-14 룡) =================
+   별 3개로 단계를 깨면 그 단계 보스전이 열린다. 뜻을 보고 낱말을 떠올려 맞히면 그게 곧 물맷돌 공격.
+   한 번씩은 보기 대신 글자 조각으로 낱말을 직접 만든다. 이기면 업적(트로피)이 쌓인다.
+   오늘의 복습: 하루 한 번 3문제, 맞히면 작은 보물. 안 해도 벌 없음(연속 기록 없음). */
+const GOLIATH=(s=110)=>`<svg width="${s}" height="${s*1.25}" viewBox="0 0 80 100" aria-label="골리앗">
+<path d="M66 8v88" stroke="#7A5A3A" stroke-width="4" stroke-linecap="round"/><path d="M60 14l6-12 6 12z" fill="#A9A9A9"/>
+<path d="M20 50h40l7 46H13z" fill="#8C6A4A"/><path d="M20 50h40v14H20z" fill="#B0B0B0"/><path d="M24 54h32M24 59h32" stroke="#888" stroke-width="1.5"/>
+<rect x="34" y="43" width="12" height="8" fill="#C98E62"/>
+<circle cx="40" cy="30" r="16" fill="#D9A273"/>
+<path d="M23 28q0-20 17-20t17 20l-3-2H26z" fill="#9A9A9A" stroke="#777" stroke-width="1.5"/><path d="M40 8v14" stroke="#777" stroke-width="3"/>
+<path d="M30 30l7 2M50 30l-7 2" stroke="#3A2E22" stroke-width="2.4" stroke-linecap="round"/>
+<circle cx="34" cy="33" r="2.2" fill="#3A2E22"/><circle cx="46" cy="33" r="2.2" fill="#3A2E22"/>
+<path d="M26 37q14 16 28 0q0 10-14 11q-14-1-14-11z" fill="#4A2E1A"/><path d="M35 41q5-2 10 0" stroke="#F1D1B5" stroke-width="1.6" fill="none"/>
+<ellipse cx="14" cy="66" rx="9" ry="13" fill="#C9A43B" stroke="#8a6f1c" stroke-width="2"/></svg>`;
+const plainW=w=>!w.includes(":")&&!/\s/.test(w);
+const tileOK=w=>plainW(w)&&w.length>=2&&w.length<=5;
+const stageWords=i=>[...new Set(LEVELS[i].qs.map(q=>q.w[q.a]))].filter(plainW);
+const bossOpen=i=>(stars[i]||0)>=3||(starsC[i]||0)>=3;
+const learned=()=>Object.keys(mastery).filter(w=>plainW(w)&&DICT[w]);
+
+/* 문제 하나 그리기: 뜻 → 낱말 (보기 또는 글자 조각). done(맞음?) 을 부른다 */
+function wordAsk(box,w,useTiles,done){
+  const ans=NAME(w);
+  if(useTiles&&tileOK(ans)){
+    const others=shuffle(Object.keys(DICT).filter(x=>plainW(x)&&x!==w).join("").split("")).filter(c=>!ans.includes(c)).slice(0,2);
+    const tiles=shuffle([...ans.split(""),...others]);let got=[];
+    box.innerHTML=`<p class="ask">뜻을 보고 글자 조각을 눌러 낱말을 만드세요.</p>
+      <div class="sentence" style="font-size:21px">"${esc(M(w))}"</div>
+      <div class="slots" id="slots">${ans.split("").map(()=>`<span></span>`).join("")}</div>
+      <div class="tiles">${tiles.map((c,k)=>`<button class="tile" data-k="${k}">${esc(c)}</button>`).join("")}</div>
+      <button class="btn ghost sm" id="tBack" style="align-self:center">한 글자 지우기</button>`;
+    const sl=[...box.querySelectorAll("#slots span")];
+    const draw=()=>sl.forEach((s,k)=>{s.textContent=got[k]?tiles[got[k].k]:"";s.classList.toggle("on",!!got[k])});
+    box.querySelectorAll(".tile").forEach(b=>b.onclick=()=>{if(b.disabled||got.length>=ans.length)return;sfx("tap");b.disabled=true;got.push({k:+b.dataset.k,b});draw();
+      if(got.length===ans.length){const made=got.map(g=>tiles[g.k]).join("");
+        if(made===ans){box.querySelector("#slots").classList.add("right");box.querySelectorAll(".tile").forEach(x=>x.disabled=true);done(true)}
+        else{box.querySelector("#slots").classList.add("no");setTimeout(()=>{const s=box.querySelector("#slots");if(s){s.classList.remove("no");s.innerHTML=`<span class="reveal">${esc(ans)}</span>`}},450);
+          box.querySelectorAll(".tile").forEach(x=>x.disabled=true);done(false)}}});
+    on("tBack",()=>{const g=got.pop();if(g){g.b.disabled=false;draw();sfx("tap")}});
+  }else{
+    let opts=shuffle(Object.keys(DICT).filter(x=>plainW(x)&&x!==w)).slice(0,3);
+    opts=shuffle([w,...opts]);
+    box.innerHTML=`<p class="ask">이 뜻을 가진 낱말을 고르세요.</p>
+      <div class="sentence" style="font-size:21px">"${esc(M(w))}"</div>
+      <div class="choices">${opts.map(o=>`<button class="choice" data-w="${o}">${esc(NAME(o))}</button>`).join("")}</div>`;
+    box.querySelectorAll(".choice").forEach(b=>b.onclick=()=>{
+      box.querySelectorAll(".choice").forEach(x=>x.disabled=true);
+      if(b.dataset.w===w){b.classList.add("ok");done(true)}
+      else{b.classList.add("no");const ok=box.querySelector(`.choice[data-w="${w}"]`);if(ok)ok.classList.add("ok");done(false)}});
+  }
+}
+
+function bossFight(li){
+  stopTimer();mapView=li;
+  const L=LEVELS[li],hpMax=3+Math.floor(li/3);
+  const pool=[...new Set([...shuffle(bag).slice(0,2),...shuffle(stageWords(li)),...(li>0?shuffle(stageWords(li-1)).slice(0,2):[])])].filter(w=>DICT[w]);
+  const B={li,hp:hpMax,hearts:3,n:0,pool,over:false};
+  const render=()=>{
+    const w=B.pool[B.n%B.pool.length];
+    app.innerHTML=`${hud("단계 지도")}
+    <div class="arena" id="arena">
+      <div class="side"><span class="bob" id="dav">${DAVID(76,[...wear,"sling"])}</span><span class="hearts">${Array.from({length:3},(_,k)=>`<span class="${k<B.hearts?"":"lost"}">♥</span>`).join("")}</span></div>
+      <div class="vs">${li+1}단계 보스</div>
+      <div class="side"><span id="gol">${GOLIATH(104)}</span><div class="hp"><i style="width:${B.hp/hpMax*100}%"></i></div><small>골리앗 ${B.hp}/${hpMax}</small></div>
+      <span class="stone" id="stone"></span>
+    </div>
+    <div class="card" id="bq"></div><div id="fb"></div>`;
+    bindHud(home);
+    wordAsk(document.getElementById("bq"),w,B.n%2===1,ok=>{
+      const ar=document.getElementById("arena");
+      if(ok){bagDel(w);master(w,1);sfx("flip");ar.classList.add("throw");
+        setTimeout(()=>{B.hp--;sfx("good");const g=document.getElementById("gol");if(g)g.classList.add("hit");
+          const bar=ar.querySelector(".hp i");if(bar)bar.style.width=(B.hp/hpMax*100)+"%";
+          if(B.hp<=0){B.over=true;setTimeout(()=>bossWin(li),700)}else setTimeout(()=>{B.n++;render()},900)},450)}
+      else{bagAdd(w);sfx("bad");B.hearts--;ar.classList.add("stomp");
+        document.getElementById("fb").innerHTML=`<div class="panel bad"><h2>골리앗이 쿵! 정답은 「${esc(NAME(w))}」</h2><p>${esc(M(w))}</p></div>`;
+        if(B.hearts<=0){B.over=true;setTimeout(()=>bossLose(li),1800)}else setTimeout(()=>{B.n++;render()},2000)}
+    });
+  };
+  render();
+}
+function bossWin(li){
+  const first=!bosses[li];bosses[li]={day:today()};store.set("bosses",bosses);
+  const prize=first?10*(mode==="challenge"?2:1):3;
+  app.innerHTML=`${hud()}
+  <div class="result"><div class="chars"><span class="bob">${DAVID(84,[...wear,"sling"])}</span><span style="transform:rotate(80deg);display:inline-block;opacity:.8">${GOLIATH(70)}</span></div>
+   <h1 style="font-size:30px;color:var(--olive-dark)">골리앗을 무찔렀어요!</h1>
+   ${first?`<div class="trophy pop">🏆<b>${li+1}단계 업적</b><small>${esc(LEVELS[li].hero)} 이야기 보스 승리</small></div>`:`<p>다시 이겼어요! 업적은 이미 있어요.</p>`}
+   <p>업적 ${Object.keys(bosses).length}/${LEVELS.length}</p>
+   <span class="combo pop" id="prize">달란트 +${prize}</span>
+   <div class="actions">${li+1<LEVELS.length&&isOpen(li+1)?`<button class="btn" id="nextLv">${li+2}단계로!</button>`:""}
+     <button class="btn ghost" id="toAch">업적 보기</button><button class="btn ghost" id="toMap">단계 지도</button></div></div>`;
+  bindHud();sfx("fanfare");confetti(160);setTimeout(()=>addTal(prize,document.getElementById("prize")),500);
+  on("nextLv",()=>{sfx("tap");startLevel(li+1)});on("toAch",()=>{sfx("tap");achieve()});on("toMap",()=>{sfx("tap");mapView=null;home()});
+}
+function bossLose(li){
+  app.innerHTML=`${hud()}
+  <div class="result"><div class="chars"><span class="bob">${DAVID(80,wear)}</span>${GOLIATH(80)}</div>
+   <h1 style="font-size:30px;color:var(--no)">골리앗이 아직 버티고 있어요</h1>
+   <p style="max-width:30em;line-height:1.6">틀린 낱말은 주머니에 넣어 두었어요. 다시 떠올려 보면 이길 수 있어!</p>
+   <div class="actions"><button class="btn" id="again">다시 싸우기!</button><button class="btn ghost" id="toMap">단계 지도</button></div></div>`;
+  bindHud();sfx("bad");
+  on("again",()=>{sfx("tap");bossFight(li)});on("toMap",()=>{sfx("tap");home()});
+}
+function achieve(){
+  app.innerHTML=`${hud("처음으로")}
+  <h1 style="font-size:30px;color:var(--olive-dark)">업적</h1>
+  <p style="color:var(--soft)">단계를 별 3개로 깨면 골리앗 보스전이 열려요. 이기면 트로피! 지금 ${Object.keys(bosses).length}/${LEVELS.length}개.</p>
+  <div class="achs">${LEVELS.map((L,i)=>{const b=bosses[i],op=bossOpen(i);
+    return `<div class="ach ${b?"on":""}"><span class="big">${b?"🏆":op?"⚔️":"🔒"}</span><b>${i+1}단계 · ${esc(L.hero)}</b>
+      <small>${b?"골리앗을 무찔렀어요":op?"보스전이 열렸어요!":`별 3개 모으기 (지금 ${starStr(Math.max(stars[i]||0,starsC[i]||0))})`}</small>
+      ${op?`<button class="btn sm ${b?"ghost":""}" data-b="${i}">${b?"다시 싸우기":"싸우러 가기"}</button>`:""}</div>`}).join("")}</div>`;
+  bindHud(home);
+  app.querySelectorAll("[data-b]").forEach(b=>b.onclick=()=>{sfx("tap");bossFight(+b.dataset.b)});
+}
+function daily(){
+  const pick=[...new Set([...shuffle(bag),...shuffle(learned()).sort((a,b)=>(mastery[a]||0)-(mastery[b]||0))])].filter(w=>DICT[w]).slice(0,3);
+  let n=0,right=0;
+  const render=()=>{const w=pick[n];
+    app.innerHTML=`${hud("처음으로")}
+    <div class="scene">${JONATHAN(58)}<div class="bubble"><b class="who">요나단</b><br>오늘의 복습 ${n+1}/3! 전에 배운 낱말이야. 기억나?</div></div>
+    <div class="card" id="dq"></div>`;
+    bindHud(home);
+    wordAsk(document.getElementById("dq"),w,n===1,ok=>{
+      if(ok){right++;bagDel(w);master(w,1);sfx("good")}else{bagAdd(w);sfx("bad")}
+      setTimeout(()=>{n++;n<pick.length?render():end()},ok?900:2000)});
+  };
+  const end=()=>{dailyDay=today();store.set("daily",dailyDay);const prize=right===0?0:right+2;
+    app.innerHTML=`${hud()}
+    <div class="result"><div class="chars"><span class="bob">${DAVID(80,wear)}</span>${JONATHAN(70)}</div>
+     <h1 style="font-size:30px;color:var(--olive-dark)">오늘의 복습 끝!</h1>
+     <p>${pick.length}문제 중 ${right}개 맞혔어요.</p>
+     ${prize?`<button class="btn gold" id="chest">작은 보물상자 열기</button>`:`<p style="color:var(--soft)">틀린 낱말은 주머니에 넣어 두었어요. 내일 또 만나요!</p>`}
+     <div class="actions"><button class="btn ghost" id="toMap">단계 지도</button></div></div>`;
+    bindHud();sfx("fanfare");
+    on("chest",()=>{const b=document.getElementById("chest");if(b.disabled)return;b.disabled=true;b.textContent="달란트 "+prize+"개!";b.classList.add("pop");sfx("buy");confetti(70);addTal(prize,b)});
+    on("toMap",()=>{sfx("tap");home()});
+  };
+  if(pick.length<3){toast("낱말을 조금 더 배우면 복습이 열려요");return}
+  render();
 }
 
 /* ================= 외운 낱말 보기 ================= */
