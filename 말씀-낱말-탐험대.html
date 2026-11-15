@@ -876,7 +876,7 @@ const dots=i=>`<span class="diff" aria-label="난이도 ${i+1}">${Array.from({le
    단계 끝: 이번 단계 낱말 + 앞 단계 낱말 다시 떠올리기 */
 let play=null,tick=null;
 function stopTimer(){clearInterval(tick);tick=null}
-const RETRY_COST=5; /* 틀린 문제 다시 도전(별 3개 기회) 문제당 달란트. 2026-11-15 룡 결정 대기(5 또는 10) */
+const RETRY_COST=5; /* 틀린 문제 다시 도전(별 3개 기회) 문제당 달란트. 2026-11-15 룡 결정: 5, 한 번뿐 */
 function startLevel(li,only,paid){
   stopTimer();mapView=null;
   const L=LEVELS[li],D=getD(li);
@@ -1136,8 +1136,8 @@ function levelResult(){
   else if(!play.wrong.length)bonus=2;
   const payCost=!play.retry&&st<3&&play.wrong.length?RETRY_COST*play.wrong.length:0;
   const msg=play.starUp?`${call()}, 틀렸던 문제를 다 맞혔어! 별 3개!`
-    :play.retry&&play.paid?"아깝다! 별은 그대로야. 뜻을 소리 내어 따라 말해 보자."
-    :play.retry?(play.wrong.length?"조금만 더! 뜻을 소리 내어 따라 말해 보자.":"헷갈렸던 낱말 뜻을 다 기억했어!")
+    :play.retry&&play.paid?"아깝다! 이번 판 별은 그대로야. 다음에 이 단계를 다시 해 보자."
+    :play.retry?(play.wrong.length?"재도전은 여기까지! 다음에 이 단계를 다시 해 보자.":"헷갈렸던 낱말 뜻을 다 기억했어!")
     :li===LEVELS.length-1&&st>0?`${call()}, ${PARTS[partI].name}을 다 깼어! 진짜 말씀 낱말 박사야!`
     :st===3?`${call()}, 낱말도 뜻도 다 알았구나!`:st===2?"잘했어! 헷갈린 것만 다시 하면 별 3개!":"괜찮아, 헷갈린 것을 한 번 더 해 보자!";
   app.innerHTML=`${hud()}
@@ -1159,7 +1159,7 @@ function levelResult(){
      <span class="sum">가진 달란트</span><span class="sum" id="totN">${talents}개</span></div>
    <p style="max-width:30em;line-height:1.6">${esc(msg)}</p>
    <div class="actions">
-     ${play.wrong.length?`<button class="btn" id="retry">헷갈린 문제 다시 (${play.wrong.length})</button>`:""}
+     ${play.wrong.length&&!play.retry?`<button class="btn" id="retry">헷갈린 문제 다시 (${play.wrong.length})</button>`:""} <!-- 재도전은 한 번뿐, 거기서 틀리면 끝(2026-11-15 룡) -->
      ${li+1<LEVELS.length&&isOpen(li+1)?`<button class="btn ${play.wrong.length?"ghost":""}" id="nextLv">${li+2}단계로!</button>`:""}
      <button class="btn ghost" id="again">이 단계 다시</button>
      <button class="btn gold" id="toShop">${COIN(22)} 다윗 꾸미기</button>
