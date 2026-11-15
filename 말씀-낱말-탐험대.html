@@ -700,8 +700,8 @@ function master(w,d){mastery[w]=Math.max(0,Math.min(3,(mastery[w]||0)+d));save()
 let bag=store.get("bag",[]),bosses=store.get("bosses",{}),dailyDay=store.get("daily","");
 function bagAdd(w){if(!w||w.includes(":")||bag.includes(w))return;bag.push(w);store.set("bag",bag)}
 function bagDel(w){const k=bag.indexOf(w);if(k>=0){bag.splice(k,1);store.set("bag",bag)}}
-/* 연습 모드(기본): 하트·시간 없음, 힌트 공짜, 틀리면 뜻 알려 줌. 연습 10단계를 깨면 도전 모드가 열린다 */
-let cards=store.get("cards",{}),mode=store.get("mode","practice"),starsC=store.get("starsC",{}),timeLeft=store.get("time",0);
+/* 모드는 하나(2026-11-15 룡: 연습·도전 합침): 하트·시간 없음, 힌트 2달란트, 틀리면 뜻 알려 줌, 달란트 1배. 옛 도전 모드 별(starsC)은 높은 쪽으로 합쳐 읽는다 */
+let cards=store.get("cards",{}),mode="practice",starsC=store.get("starsC",{}),timeLeft=store.get("time",0);
 /* 관리자(로그인)면 모든 단계·모드·보스전이 열린다(2026-11-14 룡). admin은 아래에서 선언되므로 try로 읽는다 */
 function isAdm(){try{return admin}catch(e){return false}}
 const challengeOpen=()=>isAdm()||openAll||(stars[LEVELS.length-1]||0)>0;
@@ -711,7 +711,7 @@ const isOpen=i=>isAdm()||openAll||i===0||(S()[i-1]||0)>0;
 /* 파트 바꾸기: 그 파트의 판·별·보스로 갈아 끼운다 */
 let partI=0;
 function pk(k){return PARTS[partI].id?PARTS[partI].id+"_"+k:k}
-function setPart(k){partI=PARTS[k]?k:0;LEVELS=PARTS[partI].levels;stars=store.get(pk("stars"),{});starsC=store.get(pk("starsC"),{});bosses=store.get(pk("bosses"),{});store.set("part",partI);mapView=null}
+function setPart(k){partI=PARTS[k]?k:0;LEVELS=PARTS[partI].levels;stars=store.get(pk("stars"),{});starsC=store.get(pk("starsC"),{});bosses=store.get(pk("bosses"),{});for(const k in starsC)stars[k]=Math.max(stars[k]||0,starsC[k]||0);store.set("part",partI);mapView=null}
 const ZONE=3,zoned=()=>PARTS[partI].zones,zoneOf=i=>Math.floor(i/ZONE),zoneCount=()=>Math.ceil(LEVELS.length/ZONE);
 const zoneStages=z=>LEVELS.map((_,i)=>i).filter(i=>zoneOf(i)===z);
 const best=i=>Math.max(stars[i]||0,starsC[i]||0);
@@ -817,10 +817,6 @@ function home(){
   ${dailyDay!==today()&&learned().length+bag.length>=3?`<button class="btn gold dailybtn" id="toDaily">🎁 오늘의 복습 3문제</button>`:""}
   ${nx?`<p style="text-align:center;color:var(--soft)">다음 선물: ${esc(nx.name)} (달란트 ${nx.price}개)</p>`:""}
   <div class="parts">${PARTS.map((P,k)=>`<button class="part ${k===partI?"on":""}" data-p="${k}">${esc(P.name)}</button>`).join("")}</div>
-  <div class="modes">
-    <button class="mode ${mode==="practice"?"on":""}" id="mPrac"><b>연습 모드</b><small>하트·시간 없이 끝까지</small></button>
-    <button class="mode chal ${mode==="challenge"?"on":""}" id="mChal" ${cOpen?"":"disabled"}><b>도전 모드${cOpen?"":" (잠김)"}</b><small>${cOpen?"하트·시간! 달란트 두 배":`연습 ${LEVELS.length}판을 깨면 열려요`}</small></button>
-  </div>
   ${(()=>{/* 단계 지도: 한 단계씩 크게, ◀ ▶ 화살표·밀기로 옆 단계(2026-11-12 룡) */
     if(mapView==null){let last=0;LEVELS.forEach((_,i)=>{if(isOpen(i))last=i});mapView=next>=0&&isOpen(next)?next:last}
     const i=mapView,L=LEVELS[i],op=isOpen(i),st=S()[i]||0;
@@ -835,7 +831,7 @@ function home(){
       :bossOpen(i)?`⚔️ 골리앗 보스전이 열렸어요! <button class="btn sm" id="toBoss">싸우러 가기</button>`
       :`🔒 별 3개로 깨면 골리앗 보스전이 열려요 (지금 ${starStr(st)})`}</div>`:""}
     <div class="pips">${LEVELS.map((_,k)=>`<button class="pip ${k===i?"on":""} ${(S()[k]||0)>0?"clear":""} ${isOpen(k)?"":"lock"}" data-k="${k}" aria-label="${k+1}단계">${!zoned()&&bosses[k]?"🏆":(S()[k]||0)>0?"★":k+1}</button>`).join("")}</div>`})()}
-  ${isAdm()?`<p class="bossrow">🔑 관리자(테스트 계정): 모든 판·도전 모드·보스전이 열려 있고, 여기서 한 것은 아이 기록에 남지 않아요${avgMin()?` · 최근 판 평균 ${avgMin()}분`:""}</p>`:""}
+  ${isAdm()?`<p class="bossrow">🔑 관리자(테스트 계정): 모든 판·보스전이 열려 있고, 여기서 한 것은 아이 기록에 남지 않아요${avgMin()?` · 최근 판 평균 ${avgMin()}분`:""}</p>`:""}
   <button class="dad" id="dad">${openAll?"아빠용: 단계 잠금 다시 켜기":"아빠용: 모든 단계 열기"}</button>`;
   stopTimer();bindHud();
   on("saveName",()=>{kid=document.getElementById("kidname").value.trim();store.set("kid",kid);sfx("good");home()});
@@ -845,8 +841,6 @@ function home(){
   on("toAch",()=>{sfx("tap");achieve()});on("toDaily",()=>{sfx("tap");daily()});on("toBoss",()=>{sfx("tap");bossFight(zoned()?"z"+zoneOf(mapView):mapView)});
   app.querySelectorAll(".part").forEach(b=>b.onclick=()=>{const k=+b.dataset.p;if(k===partI)return;setPart(k);if(mode==="challenge"&&!challengeOpen())mode="practice";sfx("flip");home()});
   on("dad",()=>{openAll=!openAll;store.set("openAll",openAll);if(!challengeOpen())mode="practice";store.set("mode",mode);sfx("tap");home()});
-  on("mPrac",()=>{mode="practice";store.set("mode",mode);mapView=null;sfx("tap");home()});
-  on("mChal",()=>{if(!cOpen)return;mode="challenge";store.set("mode",mode);mapView=null;sfx("unlock");home()});
   app.querySelectorAll(".lv").forEach(b=>b.onclick=()=>{sfx("tap");startLevel(+b.dataset.i)});
   const go=k=>{if(k<0||k>=LEVELS.length||k===mapView)return;mapView=k;sfx("flip");home()};
   on("mPrev",()=>go(mapView-1));on("mNext",()=>go(mapView+1));
@@ -861,7 +855,7 @@ function home(){
    ch: 문제 보기 수 상한 · mean: 뜻 찾기 보기 수 · fix: 틀린 낱말 고치기 문제 비율
    info: 틀린 보기 뜻 알려주기 */
 const DIFF0={hearts:3,time:45,hint:2,ch:4,mean:4,fix:.3,info:false};
-const PRACTICE={hearts:0,time:0,hint:"free",info:true};
+const PRACTICE={hearts:0,time:0,hint:2,info:true};
 const getD=i=>mode==="challenge"?{...DIFF0}:{...DIFF0,...PRACTICE};
 const ansW=q=>q.key||(q.w?q.w[q.a]:null); /* 그 문제에서 복습할 낱말 */
 const okW=w=>w&&DICT[w]&&!w.includes(":");
@@ -897,7 +891,7 @@ function levelIntro(){
     :`${n}단계야! 아래 규칙을 잘 봐. 빨간 글씨가 이번에 더 어려워진 거야.`;
   app.innerHTML=`${hud("단계 지도")}
   <div class="result" style="gap:10px">
-    <span class="ref" style="font-size:18px;padding:4px 14px;${mode==="challenge"?"background:var(--fire)":""}">${mode==="challenge"?"도전":"연습"} ${n}단계</span>${dots(play.li)}
+    <span class="ref" style="font-size:18px;padding:4px 14px;${mode==="challenge"?"background:var(--fire)":""}">${n}단계</span>${dots(play.li)}
     <h1 style="font-size:30px;color:var(--olive-dark)">${esc(L.t)}</h1>
     <p style="color:var(--soft)">${esc(L.sub)}</p>
     <dl class="rules">
@@ -1128,7 +1122,7 @@ function levelResult(){
   if(!play.retry){st=starsFor(play.perfect,t);bonus=((st===3?5:st===2?3:1)+li)*(mode==="challenge"?2:1);
     const ST=S(),wasC=challengeOpen(),before=ST[li]||0;
     if(st>before){unlocked=before===0&&li+1<LEVELS.length;ST[li]=st;best=true;save()}
-    chalNew=mode==="practice"&&!wasC&&challengeOpen();}
+    }
   /* 달란트 내고 틀린 문제만 다시(2026-11-15 룡): 그 문제들을 다 한 번에 맞히면 이 판 별 3개 */
   else if(play.paid&&!play.wrong.length){const ST=S();if((ST[li]||0)<3){ST[li]=3;save();play.starUp=true;st=3}}
   let newCard=false;const chestOK=!play.retry&&st>0;
@@ -1532,7 +1526,7 @@ const pinHash=s=>{let h=5381;for(const ch of "mw-salt-"+s)h=((h<<5)+h+ch.charCod
 let pinSaved=store.get("pin",""),hiddenAt=0;
 function reloadState(){
   talents=store.get("talents",0);owned=store.get("owned",[]);wear=store.get("wear",[]);mastery=store.get("mastery",{});
-  cards=store.get("cards",{});mode=store.get("mode","practice");timeLeft=store.get("time",0);bag=store.get("bag",[]);
+  cards=store.get("cards",{});mode="practice";timeLeft=store.get("time",0);bag=store.get("bag",[]);
   dailyDay=store.get("daily","");readCh=store.get("bible",{});openAll=store.get("openAll",false);setPart(store.get("part",0));
   if(mode==="challenge"&&!challengeOpen())mode="practice";
 }
