@@ -696,8 +696,12 @@ const JONATHAN=(s=64)=>`<svg width="${s}" height="${s*70/64}" viewBox="0 -6 64 7
 const COIN=(s=22)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E8B53B" stroke="#b98a1c" stroke-width="1.6"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="#fff3c4" stroke-width="1.2"/><path d="M12 7.5l1.3 2.8 3 .3-2.3 2 .7 3-2.7-1.6-2.7 1.6.7-3-2.3-2 3-.3z" fill="#fff3c4"/></svg>`;
 
 /* ================= 저장 ================= */
-const store={get(k,d){try{const v=localStorage.getItem("mw2_"+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
-             set(k,v){if(!["pin","sfx","bgm"].includes(k)&&isAdm())return;try{localStorage.setItem("mw2_"+k,JSON.stringify(v))}catch(e){}}};
+/* 아이마다 따로(2026-11-16 룡): 별·달란트·꾸미기·업적·복습은 아이 이름을 열쇠 앞에 붙여 저장. 공용(안 붙임) = 부모 비밀번호·소리·성경 체크·게임 시간·아이 목록·아이 비밀번호·판 번호 */
+const SHARED=["pin","sfx","bgm","bible","time","seed_20261110","kids","kid","kidpins","openAll","mode","part","migrated"];
+let kidKey="";
+const sk=k=>SHARED.includes(k)||!kidKey?k:kidKey+"/"+k;
+const store={get(k,d){try{const v=localStorage.getItem("mw2_"+sk(k));return v==null?d:JSON.parse(v)}catch(e){return d}},
+             set(k,v){if(!["pin","sfx","bgm"].includes(k)&&isAdm())return;try{localStorage.setItem("mw2_"+sk(k),JSON.stringify(v))}catch(e){}}};
 /* 관리자 = 테스트 계정(2026-11-14 룡): 별·달란트·보스·복습·시간 기록이 아이 기록에 쌓이지 않는다. 비밀번호·소리 설정만 저장 */
 let kid=store.get("kid",""),talents=store.get("talents",0),owned=store.get("owned",[]),wear=store.get("wear",[]);
 let stars=store.get("stars",{}),mastery=store.get("mastery",{}),openAll=store.get("openAll",false);
@@ -1576,7 +1580,9 @@ function unlock(){pickKid()}
 function pickKid(){
   gated=true;stopTimer();
   let kids=store.get("kids",[]);if(!kids.length&&kid){kids=[kid];store.set("kids",kids)}
-  const go=name=>{kid=name;store.set("kid",kid);gated=false;sfx("good");bible("start")}; /* 2026-11-16 룡: 비밀번호 → 아이 고르기 → 성경읽기표(시간이 남아도 먼저) */
+  /* 첫째 기록 옮기기(한 번): 아이 이름 없이 저장돼 있던 게임 기록을 첫 아이 이름 밑으로 복사 */
+  if(kids.length&&!store.get("migrated",false)){try{const first=kids[0];Object.keys(localStorage).filter(x=>x.startsWith("mw2_")).forEach(x=>{const k=x.slice(4);if(!SHARED.includes(k)&&!k.includes("/"))localStorage.setItem("mw2_"+first+"/"+k,localStorage.getItem(x))})}catch(e){}store.set("migrated",true)}
+  const go=name=>kidPin(name); /* 2026-11-16 룡: 부모 비밀번호 → 아이 고르기 → 아이 비밀번호 → 성경읽기표 */
   app.innerHTML=`
   <div class="result" style="gap:12px;padding-top:20px">
     <div class="chars"><span class="bob">${DAVID(80,wear)}</span>${JONATHAN(66)}</div>
@@ -1585,8 +1591,43 @@ function pickKid(){
     <div class="actions" style="justify-content:center">${kids.map(k=>`<button class="btn ${k===kid?"gold":""} kidBtn" data-k="${esc(k)}" style="font-size:24px;padding:14px 26px">${esc(k)}</button>`).join("")}</div>
     <div class="name-row"><input id="kidname" placeholder="새 탐험대원 이름" maxlength="8" aria-label="새 탐험대원 이름"><button class="btn ghost sm" id="addKid">더하기</button></div>
   </div>`;
-  app.querySelectorAll(".kidBtn").forEach(b=>b.onclick=()=>go(b.dataset.k));
-  on("addKid",()=>{const v=document.getElementById("kidname").value.trim();if(!v)return;if(!kids.includes(v)){kids.push(v);store.set("kids",kids)}go(v)});
+  app.querySelectorAll(".kidBtn").forEach(b=>b.onclick=()=>{sfx("tap");go(b.dataset.k)});
+  on("addKid",()=>{const v=document.getElementById("kidname").value.trim();if(!v)return;if(!kids.includes(v)){kids.push(v);store.set("kids",kids)}sfx("good");go(v)});
+}
+/* 아이 비밀번호(4자리, 아이마다): 처음이면 정하고, 있으면 맞혀야 들어간다. 맞으면 그 아이 기록으로 바꾸고 성경읽기표 */
+function kidPin(name,stage="enter",first=""){
+  gated=true;const pins=store.get("kidpins",{});if(stage==="enter"&&!pins[name])stage="set";
+  let typed="";
+  const title=stage==="set"?`${name}의 비밀번호 정하기`:stage==="again"?"한 번 더 눌러 주세요":`${name}, 비밀번호를 눌러요`;
+  const sub=stage==="set"?"나만 아는 숫자 4자리를 정해요.":stage==="again"?"방금 정한 4자리를 다시 눌러요.":"내 비밀번호 4자리!";
+  app.innerHTML=`
+  <div class="result" style="gap:12px;padding-top:20px">
+    <div class="chars"><span class="bob">${DAVID(80,wear)}</span>${JONATHAN(66)}</div>
+    <h1 style="font-size:28px;color:var(--olive-dark)">${esc(title)}</h1>
+    <p style="color:var(--soft)">${sub}</p>
+    <div class="pindots" id="pd">${"<i></i>".repeat(4)}</div>
+    <p id="pinMsg" style="color:var(--no);min-height:1.4em"></p>
+    <div class="pinpad">${[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map(k=>k===""?"<span></span>":`<button class="pk" data-k="${k}">${k}</button>`).join("")}</div>
+    <button class="btn ghost sm" id="backKids">다른 탐험대원</button>
+  </div>`;
+  on("backKids",()=>{sfx("tap");pickKid()});
+  const draw=()=>document.querySelectorAll("#pd i").forEach((d,i)=>d.classList.toggle("on",i<typed.length));
+  const enter=()=>{kid=name;kidKey=name;store.set("kid",kid);reloadState();gated=false;sfx("good");bible("start")};
+  app.querySelectorAll(".pk").forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k;sfx("tap");
+    if(k==="⌫"){typed=typed.slice(0,-1);draw();return}
+    if(typed.length>=4)return;typed+=k;draw();
+    if(typed.length<4)return;
+    setTimeout(()=>{
+      if(stage==="set")return kidPin(name,"again",typed);
+      if(stage==="again"){
+        if(typed!==first){sfx("bad");return kidPin(name,"set")}
+        pins[name]=pinHash("kid-"+typed);store.set("kidpins",pins);toast("비밀번호를 정했어요");return enter();
+      }
+      if(pinHash("kid-"+typed)===pins[name])return enter();
+      sfx("bad");typed="";draw();document.getElementById("pinMsg").textContent="비밀번호가 달라요";
+    },150);
+  });
 }
 document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState==="hidden")hiddenAt=Date.now();
