@@ -1572,11 +1572,11 @@ function lockScreen(stage="enter",first="",why=""){
   });
 }
 function unlock(){pickKid()}
-/* 탐험대원 고르기(2026-11-16 룡): 부모님이 비밀번호로 열면 → 아이가 자기 이름을 고르고 → 체크표(시간 없을 때)나 게임. 둘째·셋째도 쓰게 이름을 여러 개 둔다 */
+/* 탐험대원 고르기(2026-11-16 룡): 부모님이 비밀번호로 열면 → 아이가 자기 이름을 고르고 → 성경읽기표(항상). 둘째·셋째도 쓰게 이름을 여러 개 둔다 */
 function pickKid(){
   gated=true;stopTimer();
   let kids=store.get("kids",[]);if(!kids.length&&kid){kids=[kid];store.set("kids",kids)}
-  const go=name=>{kid=name;store.set("kid",kid);gated=false;sfx("good");if(timeLeft>0)home();else bible("start")};
+  const go=name=>{kid=name;store.set("kid",kid);gated=false;sfx("good");bible("start")}; /* 2026-11-16 룡: 비밀번호 → 아이 고르기 → 성경읽기표(시간이 남아도 먼저) */
   app.innerHTML=`
   <div class="result" style="gap:12px;padding-top:20px">
     <div class="chars"><span class="bob">${DAVID(80,wear)}</span>${JONATHAN(66)}</div>
