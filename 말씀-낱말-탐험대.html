@@ -879,6 +879,7 @@ const dots=i=>`<span class="diff" aria-label="난이도 ${i+1}">${Array.from({le
    단계 끝: 이번 단계 낱말 + 앞 단계 낱말 다시 떠올리기 */
 let play=null,tick=null;
 function stopTimer(){clearInterval(tick);tick=null}
+const HEART_COST=5,HEART_BUYS=1; /* 보스전 하트 사기: 달란트 값, 한 보스전에 살 수 있는 횟수(2026-11-16, 값은 룡 확인 대기) */
 const RETRY_COST=5; /* 틀린 문제 다시 도전(별 3개 기회) 문제당 달란트. 2026-11-15 룡 결정: 5, 한 번뿐 */
 function startLevel(li,only,paid){
   stopTimer();mapView=null;
@@ -1255,21 +1256,31 @@ function bossCfg(id){
 function bossFight(id){
   stopTimer();const C=bossCfg(id);mapView=C.back;
   if(C.pool.length<2){toast("이 구역 낱말이 모자라요");return}
-  const B={hp:C.hp,hearts:3,n:0,over:false},alk=C.theme==="alk";
+  const B={hp:C.hp,hearts:3,n:0,over:false,bought:0},alk=C.theme==="alk";
+  const hh=()=>`<span class="hearts" id="bHearts">${Array.from({length:3},(_,k)=>`<span class="${k<B.hearts?"":"lost"}">${alk?"⚪":"♥"}</span>`).join("")}</span>`;
+  /* 달란트로 하트 사기(2026-11-16 룡): 하트가 3개보다 적을 때만, 한 보스전에 HEART_BUYS번까지 */
+  const buyBtn=()=>B.hearts<3&&B.bought<HEART_BUYS&&!B.over?`<button class="btn gold sm" id="buyHeart" ${talents<HEART_COST?"disabled":""}>${COIN(20)} 달란트 ${HEART_COST}개로 하트 1개${talents<HEART_COST?" (모자라요)":""}</button>`:"";
   const foe=()=>alk?`<div class="board" id="gol">${Array.from({length:C.hp},(_,k)=>`<i class="bk ${k<B.hp?"":"gone"}"></i>`).join("")}</div>`:`<span id="gol">${GOLIATH(104)}</span>`;
   const render=()=>{
     const w=C.pool[B.n%C.pool.length];
     app.innerHTML=`${hud("단계 지도")}
     <div class="arena ${alk?"alk":""}" id="arena">
-      <div class="side"><span class="bob" id="dav">${DAVID(76,[...wear,"sling"])}</span><span class="hearts">${Array.from({length:3},(_,k)=>`<span class="${k<B.hearts?"":"lost"}">${alk?"⚪":"♥"}</span>`).join("")}</span></div>
+      <div class="side"><span class="bob" id="dav">${DAVID(76,[...wear,"sling"])}</span>${hh()}</div>
       <div class="vs">${esc(C.label)}</div>
       <div class="side">${foe()}<div class="hp"><i style="width:${B.hp/C.hp*100}%"></i></div><small>${alk?"남은 검은 돌":"골리앗"} ${B.hp}/${C.hp}</small></div>
       <span class="stone" id="stone"></span><span class="flash"></span><span class="bang">💥 쿵! 골리앗의 공격!</span>
     </div>
+    <div id="buyBox" style="text-align:center">${buyBtn()}</div>
     <div class="card" id="bq"></div><div id="fb"></div>`;
     bindHud(home);
+    on("buyHeart",()=>{if(B.over||B.hearts>=3||B.bought>=HEART_BUYS)return;
+      if(talents<HEART_COST){sfx("bad");toast(`달란트가 ${HEART_COST}개 필요해요`);return}
+      talents-=HEART_COST;B.hearts++;B.bought++;save();sfx("buy");
+      const t=document.getElementById("talN");if(t)t.textContent=talents;
+      const h=document.getElementById("bHearts");if(h){h.outerHTML=hh();document.getElementById("bHearts").classList.add("pop")}
+      document.getElementById("buyBox").innerHTML=buyBtn()});
     wordAsk(document.getElementById("bq"),w,B.n%2===1,ok=>{
-      const ar=document.getElementById("arena");
+      const ar=document.getElementById("arena");document.getElementById("buyBox").innerHTML="";
       if(ok){bagDel(w);master(w,1);sfx("flip");ar.classList.add("throw");
         setTimeout(()=>{B.hp--;sfx("good");const g=document.getElementById("gol");if(g)g.classList.add("hit");
           if(alk){const k=g&&g.querySelectorAll(".bk:not(.gone)");if(k&&k.length)k[k.length-1].classList.add("gone")}
