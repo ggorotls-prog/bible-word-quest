@@ -13,11 +13,14 @@ public class UpdateJob extends JobService {
 
     static void schedule(Context c) {
         JobScheduler js = c.getSystemService(JobScheduler.class);
-        if (js == null || js.getPendingJob(PERIODIC) != null) return;
+        if (js == null) return;
+        // 폰을 껐다 켜도 남게(setPersisted). 옛 예약(껐다 켜면 사라짐)이 있으면 새로 건다 (2026-11-16)
+        android.app.job.JobInfo old = js.getPendingJob(PERIODIC);
+        if (old != null && old.isPersisted()) return;
         JobInfo.Builder b = new JobInfo.Builder(PERIODIC, new ComponentName(c, UpdateJob.class))
                 .setPeriodic(15 * 60_000L)
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
-                .setPersisted(false);
+                .setPersisted(true);
         try { js.schedule(b.build()); } catch (Exception ignored) {}
     }
 
