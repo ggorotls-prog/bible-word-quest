@@ -167,6 +167,20 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .bar i{display:block;height:100%;background:var(--olive);border-radius:99px;transition:width .4s}
 .count{font-family:var(--display);color:var(--olive-dark);font-variant-numeric:tabular-nums}
 .scene{display:flex;gap:10px;align-items:flex-end}
+/* 월드 보스 구출 작전(2026-11-17 룡 아들 의견): 맞힐 때마다 그림 한 조각 */
+.rescue{width:100%;max-width:480px;align-self:center;box-sizing:border-box;background:var(--scroll);border-radius:18px;padding:8px 10px 10px;box-shadow:0 3px 0 var(--line);text-align:center}
+.rescue svg{width:100%;max-width:460px;height:auto;display:block;margin:0 auto}
+.rescue.q svg{max-height:150px;width:auto;max-width:100%}
+.top .ref{white-space:nowrap}
+.rescue .rmsg{font-family:var(--display);color:var(--olive-dark);font-size:17px;margin-top:4px}
+.rescue .rmsg b{color:var(--fire)}
+.rescue .new{animation:pz .5s ease-out}
+@keyframes pz{0%{transform:scale(0);opacity:0}70%{transform:scale(1.25)}100%{transform:scale(1);opacity:1}}
+.rescue .drop{animation:rain 1s linear infinite}
+@keyframes rain{0%{transform:translateY(-12px);opacity:0}30%{opacity:.8}100%{transform:translateY(40px);opacity:0}}
+.rescue .tw{animation:tw 1.6s ease-in-out infinite alternate}
+@keyframes tw{from{opacity:.3}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.rescue .drop,.rescue .tw,.rescue .new{animation:none}}
 .scene svg{flex:none}
 .bubble{position:relative;background:var(--scroll);border-radius:18px;padding:12px 14px;line-height:1.6;flex:1;min-width:0;box-shadow:0 3px 0 var(--line)}
 .bubble b.who{font-family:var(--display);font-weight:400;color:var(--sky)}
@@ -959,7 +973,7 @@ function levelIntro(){
 }
 function heartsHtml(){if(!play.D.hearts)return"";return `<span class="hearts" id="hearts">${Array.from({length:play.D.hearts},(_,k)=>`<span class="${k<play.hearts?"":"lost"}">♥</span>`).join("")}</span>`}
 function topBar(){const n=play.items.length;
-  return `<div class="top"><span class="ref">${play.exam?"월드 시험":lvN(play.li)}</span><div class="bar"><i style="width:${play.i/n*100}%"></i></div><span class="count">${play.i+1}/${n}</span>${heartsHtml()}</div>
+  return `<div class="top"><span class="ref">${play.exam?(rescueR()?rescueR().t:"월드 시험"):lvN(play.li)}</span><div class="bar"><i style="width:${play.i/n*100}%"></i></div><span class="count">${play.i+1}/${n}</span>${heartsHtml()}</div>
   ${play.D.time&&play.items[play.i].kind==="q"?`<div class="timer" id="timer"><i style="width:100%"></i></div>`:""}`}
 function step(){stopTimer();const it=play.items[play.i];it.kind==="q"?question(it):recall(it)}
 function nextStep(){stopTimer();play.i++;play.i<play.items.length?step():levelResult()}
@@ -1005,8 +1019,8 @@ function question(it){
       <div class="choices ${long?"one":""} ${many?"many":""}" id="ch">${keep.map((i,k)=>`<button class="choice ${long?"mean":""}" data-i="${i}">${many?"":`<span class="n">${k+1}</span>`}${ul(q.c[i])}</button>`).join("")}</div>`;
   }
   app.innerHTML=`${hud("단계 지도")}${topBar()}
-  <div class="scene"><span class="bob">${DAVID(62,wear)}</span><div class="bubble">
-    ${q.who?`<b class="who">${esc(q.who)} 이야기</b> <span class="ref">${esc(q.ref)}</span><br>${esc(q.story)}`:`<b class="who">${esc(play.L.code||"")}</b> <span class="ref">${esc(play.L.t.replace(/^\S+\s/,""))}</span><br>${esc(play.L.sub)}`}</div></div>
+  ${play.exam&&rescueR()?rescueBox(play.perfect,play.i/EXAM_N,"",-1,true):`<div class="scene"><span class="bob">${DAVID(62,wear)}</span><div class="bubble">
+    ${q.who?`<b class="who">${esc(q.who)} 이야기</b> <span class="ref">${esc(q.ref)}</span><br>${esc(q.story)}`:`<b class="who">${esc(play.L.code||"")}</b> <span class="ref">${esc(play.L.t.replace(/^\S+\s/,""))}</span><br>${esc(play.L.sub)}`}</div></div>`}
   <div class="card">
     <div class="qhead"><span class="qno">${play.retry?"다시 도전":it.fix?"고치기 문제":"문제"}</span>${play.combo>=2?`<span class="combo">${play.combo}연속!</span>`:""}
       <span class="sp"></span></div>
@@ -1067,7 +1081,11 @@ function pick(it,q,i,btn){
 /* 책 꼴 문제: 맞히면 1초 뒤 다음 / 두 번 틀리면 정답·풀이를 보여 주고 주머니에 넣고 다음 */
 function bookDone(it,q){
   const w=ansW(q);
-  if(it.first){play.perfect++;if(okW(w))master(w,1)}else{play.wrong.push(it.qi);if(okW(w))bagAdd(w)}
+  if(it.first){play.perfect++;if(okW(w))master(w,1);
+    /* 구출 작전: 맞히면 그림 한 조각이 바로 붙는다 */
+    const rb=play.exam&&document.getElementById("rescue");if(rb){rb.outerHTML=rescueBox(play.perfect,play.i/EXAM_N,"",play.perfect-1,true);
+      const R=rescueR();if(play.perfect===EXAM_PASS)toast(`${R.unit} ${EXAM_PASS}${R.cnt} 완성!`)}}
+  else{play.wrong.push(it.qi);if(okW(w))bagAdd(w)}
   const pl=play;setTimeout(()=>{if(play===pl&&!play.over&&document.getElementById("ch"))nextStep()},1100);
 }
 function reveal(it,q){
@@ -1164,9 +1182,64 @@ function logTime(li){if(!play||play.retry||play.exam)return;const t=store.get("t
 function avgMin(){const t=store.get("times",[]).slice(-10);return t.length?(t.reduce((a,b)=>a+b.sec,0)/t.length/60).toFixed(1):null}
 /* 월드 시험 안내 줄: 10단계를 다 깨면 열림, 통과하면 다음 월드 */
 const rescueOf=k=>PARTS[k]&&PARTS[k].world&&LEVELS0[PARTS[k].world-1]?PARTS[k].world-1:-1;
+/* 월드 보스 = 인물 구출 작전(2026-11-17 룡 아들 의견): 시험 규칙은 그대로(20문제·16개 통과).
+   맞힐 때마다 그림 한 조각이 붙고, 16조각이면 구출. 3월드부터는 그 월드를 더할 때 같은 꼴로 넣는다.
+   (계획: 3 요셉 · 4 모세 홍해 · 5 여호수아 여리고 · 6 사무엘 · 7 다윗 · 8 다니엘 사자 · 9 예수님 = 구출 아님, 오병이어 열두 바구니 · 10 바울 빌립보 감옥) */
+const DROPS=[20,58,96,134,172,210,248,286,40,152,268].map((x,k)=>`<line class="drop" x1="${x}" y1="${8+(k%4)*9}" x2="${x-3}" y2="${18+(k%4)*9}" stroke="#7FA6D6" stroke-width="2" stroke-linecap="round" style="animation-delay:${(k*.17).toFixed(2)}s"/>`).join("");
+function arkSvg(n,fr,end,nw){
+  const full=n>=EXAM_PASS,wy=end==="pass"?126:Math.round(160-fr*42),pw=220/8;
+  const planks=Array.from({length:EXAM_PASS},(_,k)=>{const r=k<8?1:0,c=k%8,x=50+c*pw,y=r?113:95,on=k<n;
+    return on?`<rect class="${k===nw?"new":""}" style="transform-origin:${x+pw/2}px ${y+9}px" x="${x}" y="${y}" width="${pw}" height="18" fill="${(k%3)?"#8B5A2B":"#9C6633"}" stroke="#5C3A1A" stroke-width="1.5"/>`
+      :`<rect x="${x+1.5}" y="${y+1.5}" width="${pw-3}" height="15" fill="none" stroke="#8B5A2B" stroke-width="1.2" stroke-dasharray="3 3" opacity=".55"/>`}).join("");
+  const bow=end==="pass"?[["#E25B4B",70],["#F0A23A",62],["#F2D04B",54],["#6CB46A",46],["#4F86C6",38]].map(([c,r])=>`<path d="M${160-r*2.6} 92 A${r*2.6} ${r*1.6} 0 0 1 ${160+r*2.6} 92" fill="none" stroke="${c}" stroke-width="6" opacity=".75"/>`).join(""):"";
+  return `<svg viewBox="0 0 320 170" role="img" aria-label="방주 나무판 ${n}장">
+  <rect width="320" height="170" fill="${end==="pass"?"#D8ECFA":"#C5D3E2"}"/>${bow}
+  ${end==="pass"?"":`<ellipse cx="80" cy="14" rx="70" ry="16" fill="#9AA8B8"/><ellipse cx="230" cy="12" rx="90" ry="17" fill="#A7B4C2"/>${DROPS}`}
+  <rect x="0" y="131" width="320" height="39" fill="#9BBF6A"/>
+  <defs><clipPath id="hull"><path d="M44 95 H276 L254 131 H66 Z"/></clipPath></defs>
+  <g clip-path="url(#hull)">${planks}</g>
+  <path d="M44 95 H276 L254 131 H66 Z" fill="none" stroke="#5C3A1A" stroke-width="2" opacity="${full?1:.35}"/>
+  ${full?`<g class="${nw===EXAM_PASS-1?"new":""}" style="transform-origin:160px 83px"><rect x="112" y="72" width="96" height="23" fill="#A0522D" stroke="#5C3A1A" stroke-width="1.5"/><path d="M104 72 L160 56 L216 72 Z" fill="#7A3E1D"/><rect x="152" y="78" width="16" height="11" fill="#FFE8A8"/>
+   <text x="160" y="52" text-anchor="middle" font-size="22">🧔🐘🦒🐑</text></g>`:""}
+  <rect x="0" y="${wy}" width="320" height="${170-wy}" fill="#4E86C4" opacity=".82"/>
+  <path d="M0 ${wy} q20 -6 40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0" fill="none" stroke="#D6E8FA" stroke-width="2"/>
+  </svg>`}
+function roadSvg(n,fr,end,nw){
+  const full=n>=EXAM_PASS,night=end==="pass",pt=k=>{const t=k/(EXAM_PASS-1);return[Math.round(38+t*236),Math.round(138-Math.sin(t*Math.PI)*38+Math.sin(t*Math.PI*3)*7)]};
+  const stones=Array.from({length:EXAM_PASS},(_,k)=>{const[x,y]=pt(k);return k<n
+    ?`<ellipse class="${k===nw?"new":""}" style="transform-origin:${x}px ${y}px" cx="${x}" cy="${y}" rx="9" ry="6" fill="${k%2?"#A39684":"#B5A895"}" stroke="#6E6354" stroke-width="1.3"/>`
+    :`<ellipse cx="${x}" cy="${y}" rx="8" ry="5" fill="none" stroke="#8C7F6C" stroke-width="1.2" stroke-dasharray="3 3" opacity=".6"/>`}).join("");
+  const[ax,ay]=pt(Math.max(0,Math.min(n,EXAM_PASS)-1));
+  const stars=night?Array.from({length:34},(_,k)=>`<circle class="tw" cx="${(k*97)%316+2}" cy="${(k*53)%70+6}" r="${k%3?1.4:2.2}" fill="#FFF6C8" style="animation-delay:${(k%7)*.2}s"/>`).join(""):"";
+  return `<svg viewBox="0 0 320 170" role="img" aria-label="가나안 길 돌 ${n}개">
+  <rect width="320" height="170" fill="${night?"#23335A":"#F6E6BE"}"/>${stars}
+  ${night?"":`<circle cx="276" cy="30" r="16" fill="#F5C24B"/>`}
+  <path d="M0 120 Q80 92 160 108 T320 100 V170 H0 Z" fill="${night?"#3B4A3A":"#E3C98E"}"/>
+  ${stones}
+  <text x="34" y="164" text-anchor="middle" font-size="12" fill="${night?"#DDE":"#6E5A35"}">우르</text>
+  <text x="282" y="164" text-anchor="middle" font-size="12" fill="${night?"#DDE":"#6E5A35"}">가나안</text>
+  <text x="290" y="126" text-anchor="middle" font-size="${full?26:18}" opacity="${full?1:.45}">⛺</text>
+  <text x="${full?262:ax}" y="${full?128:ay-8}" text-anchor="middle" font-size="22">🧔</text>
+  </svg>`}
+const RESCUE={
+  0:{t:"노아 구출 작전",goal:"방주를 지어라!",unit:"나무판",cnt:"장",svg:arkSvg,
+     story:"하나님이 노아에게 고페르 나무로 방주를 만들라고 하셨어(창세기 6:14). 문제를 맞힐 때마다 나무판 1장! 비가 오기 전에 16장을 모으면 방주가 완성돼.",
+     win:"방주 완성! 노아 가족과 동물들이 방주에 탔어요(창세기 7:7~9). 홍수가 끝난 뒤 하나님은 약속의 표시로 구름 속에 무지개를 두셨어요(창세기 9:13)",
+     lose:k=>`나무판이 ${k}장 모자라서 방주를 다 못 지었어요.`},
+  1:{t:"아브라함 구출 작전",goal:"가나안 길을 놓아라!",unit:"돌",cnt:"개",svg:roadSvg,
+     story:"하나님이 아브람(나중 이름 아브라함)에게 고향을 떠나 내가 보여 줄 땅으로 가라고 하셨어(창세기 12:1). 문제를 맞힐 때마다 길에 돌 1개! 16개를 놓으면 가나안에 도착해.",
+     win:"가나안 도착!(창세기 12:5) 그 뒤에 하나님이 하늘의 별을 보여 주시며 \"셀 수 있겠니? 네 자손이 이렇게 많아질 거야\" 하고 말씀하셨어요(창세기 15:5)",
+     lose:k=>`돌이 ${k}개 모자라서 가나안까지 못 갔어요.`}
+};
+const rescueR=()=>RESCUE[rescueOf(partI)]||null;
+/* 시험 중·결과 그림. end: ""(진행) | "pass" | "fail", nw = 방금 붙은 조각 번호 */
+function rescueBox(n,fr,end,nw=-1,inQ=false){const R=rescueR();if(!R)return"";
+  const msg=end==="pass"?R.win:end==="fail"?R.lose(EXAM_PASS-n):n>=EXAM_PASS?`${R.unit} ${EXAM_PASS}${R.cnt} 다 모았어! 남은 문제도 힘내자`:`${R.unit} <b>${n}</b>/${EXAM_PASS}${R.cnt}`;
+  return `<div class="rescue ${inQ?"q":""}" id="rescue">${R.svg(Math.min(n,EXAM_PASS),fr,end,nw)}<div class="rmsg">${msg}</div></div>`}
 function examLine(){const P=PARTS[partI],hr=rescueOf(partI),who=hr>=0?LEVELS0[hr].hero:"",ex=examOf(partI),done=LEVELS.filter((_,i)=>(S()[i]||0)>0).length,op=isAdm()||openAll||done===LEVELS.length;
   const nx=PARTS[partI+1]&&PARTS[partI+1].world?` ${PARTS[partI+1].world}월드가 열렸어요!`:"";
-  return ex?`🎓 ${P.world}월드 클리어! 시험 ${ex.best}/${EXAM_N}개${nx} <button class="btn ghost sm" id="toExam">시험 다시 보기</button>`
+  return ex?`🎓 ${P.world}월드 클리어! 시험 ${ex.best}/${EXAM_N}개${nx} <button class="btn ghost sm" id="toExam">${RESCUE[hr]?"작전 다시 하기":"시험 다시 보기"}</button>`
+   :op&&RESCUE[hr]?`⚔️ ${P.world}월드 보스: ${RESCUE[hr].t}이 열렸어요! ${RESCUE[hr].goal} <button class="btn sm" id="toExam">작전 시작</button>`
    :op?`📝 ${P.world}월드 시험이 열렸어요! ${EXAM_N}문제 중 ${EXAM_PASS}개를 맞히면 통과${who?` · ${who} 구출!`:""} <button class="btn sm" id="toExam">시험 보기</button>`
    :`🔒 10단계를 모두 깨면 ${P.world}월드 시험이 열려요${who?` (통과하면 ${who} 구출)`:""} (지금 ${done}/${LEVELS.length}단계)`}
 /* 시험 문제 고르기: 단계마다 2문제(모자라면 남는 문제로 채움), 섞어서 20문제 */
@@ -1178,14 +1251,16 @@ function startExam(){
   const L={t:`${P.world}월드 시험`,sub:`${EXAM_N}문제 중 ${EXAM_PASS}개를 맞히면 통과!`,qs};
   const D={...getD(0),hint:0,fix:0};
   play={li:LEVELS.length-1,exam:true,L,D,items:qs.map((_,i)=>({kind:"q",qi:i,fix:false})),i:0,perfect:0,combo:0,maxCombo:0,earned:0,wrong:[],retry:false,paid:false,hearts:0,over:false,t0:Date.now()};
+  const R=rescueR();
   app.innerHTML=`${hud("단계 지도")}
   <div class="result" style="gap:10px">
-    <span class="ref" style="font-size:18px;padding:4px 14px;background:var(--fire)">${P.world}월드 시험</span>
-    <h1 style="font-size:30px;color:var(--olive-dark)">${esc(P.name)} 졸업 시험</h1>
-    <dl class="rules"><dt>문제</dt><dd>${EXAM_N}문제 (1~10단계에서 골고루)</dd><dt>통과</dt><dd>${EXAM_PASS}개 이상 맞히기</dd>
+    <span class="ref" style="font-size:18px;padding:4px 14px;background:var(--fire)">${P.world}월드 보스</span>
+    <h1 style="font-size:30px;color:var(--olive-dark)">${R?`${esc(R.t)}<br><span style="font-size:22px;color:var(--fire)">${esc(R.goal)}</span>`:`${esc(P.name)} 졸업 시험`}</h1>
+    ${R?rescueBox(0,0,""):""}
+    <dl class="rules"><dt>문제</dt><dd>${EXAM_N}문제 (1~10단계에서 골고루)</dd><dt>통과</dt><dd>${R?`${R.unit} ${EXAM_PASS}${R.cnt} 모으기 (${EXAM_PASS}개 이상 맞히기)`:`${EXAM_PASS}개 이상 맞히기`}</dd>
       <dt>기회</dt><dd class="new">문제마다 한 번! 틀리면 바로 정답을 알려 줘요</dd><dt>힌트</dt><dd>없음</dd></dl></div>
-  <div class="scene"><span class="bob">${DAVID(66,wear)}</span><div class="bubble"><b class="who">다윗</b><br>${esc(call())}, ${P.world}월드에서 배운 걸 다 보여 줄 시간이야! 통과하면 ${(r=>r>=0?esc(j(LEVELS0[r].hero,"을","를"))+" 구출하고 ":"")(rescueOf(partI))}다음 월드로 갈 수 있어.</div></div>
-  <button class="btn" id="go" style="align-self:center">시험 시작!</button>`;
+  <div class="scene"><span class="bob">${DAVID(66,wear)}</span><div class="bubble"><b class="who">다윗</b><br>${R?esc(R.story):`${esc(call())}, ${P.world}월드에서 배운 걸 다 보여 줄 시간이야! 통과하면 ${(r=>r>=0?esc(j(LEVELS0[r].hero,"을","를"))+" 구출하고 ":"")(rescueOf(partI))}다음 월드로 갈 수 있어.`}</div></div>
+  <button class="btn" id="go" style="align-self:center">${R?"작전 시작!":"시험 시작!"}</button>`;
   bindHud(home);on("go",()=>{sfx("good");step()});
 }
 function examResult(){
@@ -1194,10 +1269,10 @@ function examResult(){
   const hr=rescueOf(partI),saved=first&&hr>=0;if(saved&&!cards[hr]){cards[hr]=true;store.set("cards",cards)}
   const nx=PARTS[partI+1]&&PARTS[partI+1].world?partI+1:-1,prize=first?EXAM_PRIZE:0;
   app.innerHTML=`${hud()}
-  <div class="result"><div class="chars"><span class="bob">${DAVID(80,wear)}</span>${JONATHAN(70)}</div>
-   <span class="ref" style="font-size:17px">${P.world}월드 시험 결과</span>
+  <div class="result">${rescueR()?rescueBox(k,1,pass?"pass":"fail"):`<div class="chars"><span class="bob">${DAVID(80,wear)}</span>${JONATHAN(70)}</div>`}
+   <span class="ref" style="font-size:17px">${rescueR()?esc(rescueR().t):P.world+"월드 시험"} 결과</span>
    <h1 style="font-size:40px;color:${pass?"var(--olive-dark)":"var(--fire)"}">${k} / ${EXAM_N}</h1>
-   ${pass?`<span class="combo pop">🎓 통과! ${P.world}월드 클리어!</span>`:`<p style="font-family:var(--display);color:var(--fire);font-size:20px">${EXAM_PASS}개부터 통과예요. ${EXAM_PASS-k}개만 더!</p>`}
+   ${pass?`<span class="combo pop">🎓 통과! ${P.world}월드 클리어!</span>`:`<p style="font-family:var(--display);color:var(--fire);font-size:20px">${rescueR()?`${rescueR().unit} ${EXAM_PASS-k}${rescueR().cnt}만 더 모으면 돼!`:`${EXAM_PASS}개부터 통과예요. ${EXAM_PASS-k}개만 더!`}</p>`}
    ${saved?`<p style="font-family:var(--display);color:var(--fire);font-size:22px">🎉 ${esc(j(LEVELS0[hr].hero,"을","를"))} 구출했어요! 인물 카드를 얻었어요</p>${cardHtml(hr)}`:""}
    ${first&&nx>=0?`<div class="panel" style="background:#E3EEF9;text-align:center"><h2 style="color:var(--olive-dark)">${PARTS[nx].world}월드가 열렸어요!</h2><p>${esc(PARTS[nx].name)}</p></div>`:""}
    <div class="tally"><span>맞힌 문제</span><span>${k}/${EXAM_N}</span><span>받은 달란트</span><span>${play.earned}개</span>
@@ -1205,7 +1280,7 @@ function examResult(){
    <p style="max-width:30em;line-height:1.6">${pass?`${esc(call())}, 정말 잘했어!`:"단계를 다시 해 보고 또 도전하자!"}${play.wrong.length?" 틀린 낱말은 주머니에 넣어 두었어.":""}</p>
    <div class="actions">
      ${pass&&nx>=0?`<button class="btn" id="toNext">${PARTS[nx].world}월드로 가기!</button>`:""}
-     <button class="btn ${pass?"ghost":""}" id="again">시험 다시 보기</button>
+     <button class="btn ${pass?"ghost":""}" id="again">${rescueR()?"작전 다시 하기":"시험 다시 보기"}</button>
      <button class="btn ghost" id="toMap">단계 지도</button></div></div>`;
   bindHud();
   if(pass){setTimeout(()=>{sfx("fanfare");confetti(160)},300);if(prize)setTimeout(()=>{const t=document.getElementById("totN");addTal(prize,t);if(t)t.textContent=talents+"개"},700)}
