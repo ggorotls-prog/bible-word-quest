@@ -679,7 +679,7 @@ const BOOK1_2=[{"code":"2-1","hero":"노아","t":"2-1 까닭 찾기","sub":"글�
 /* 1월드 시험에만 나오는 문제(판을 한 꼭지로 나눌 때 남은 앞 꼭지 문제) */
 const EXTRA1_1=[{"noMean":1,"key":"회개","ask":"밑줄 친 낱말은 무슨 뜻일까요?","s":"삭개오는 예수님을 만나고 잘못을 [[회개]]했다.","c":["자기 것이 좋다고 남에게 드러내어 말함.","잘못 살아온 것을 깨닫고 뉘우쳐 새롭게 살기로 함.","마음속으로 괴로워하며 애를 태움.","확실히 알 수 없어서 믿지 못함."],"a":1},{"noMean":1,"ask":"두 낱말의 사이가 다른 짝 하나를 찾아보세요.","s":"","c":["크다 – 작다","높다 – 낮다","힘세다 – 튼튼하다","밝다 – 어둡다"],"a":2,"why":"③만 뜻이 비슷한 말이고, 나머지는 반대인 말이에요."},{"noMean":1,"ask":"흉내 내는 말이 어색하게 쓰인 문장을 찾아보세요.","s":"","c":["방주가 물 위에 [[둥실둥실]] 떠다녔다.","비둘기가 [[파닥파닥]] 날갯짓했다.","동물들이 [[줄줄이]] 방주로 들어갔다.","뱀이 [[성큼성큼]] 기어갔다."],"a":3,"why":"'성큼성큼'은 다리를 크게 벌려 걷는 모습이에요. 뱀은 '스르르' 기어가요."}];
 const PARTS=[
- {id:"",name:"인물 이야기",levels:LEVELS0,zones:false},
+ {id:"",name:"인물 이야기",levels:LEVELS0,zones:false,hidden:true}, /* 2026-11-17 룡: 인물 이야기 탭 없앰. 인물 카드는 월드 시험 통과 때 구출로 얻는다 */
  {id:"b1h1",name:"1월드 단어의 뜻",levels:BOOK1_1,zones:true,final:"알까기",world:1,extra:EXTRA1_1},
  {id:"b1h2",name:"2월드 문장의 뜻",levels:BOOK1_2,zones:true,final:"숟가락 달리기",world:2,extra:[]}];
 /* 월드 시험(2026-11-17 룡): 그 월드 문제로 20문제, 16개 이상 맞히면 통과 → 다음 월드가 열린다 */
@@ -760,7 +760,7 @@ const isOpen=i=>isAdm()||openAll||i===0||(S()[i-1]||0)>0;
 /* 파트 바꾸기: 그 파트의 판·별·보스로 갈아 끼운다 */
 let partI=0;
 function pk(k){return PARTS[partI].id?PARTS[partI].id+"_"+k:k}
-function setPart(k){k=PARTS[k]?k:0;while(kidKey&&k>0&&!worldOpen(k))k--;partI=k;LEVELS=PARTS[partI].levels;stars=store.get(pk("stars"),{});starsC=store.get(pk("starsC"),{});bosses=store.get(pk("bosses"),{});for(const k in starsC)stars[k]=Math.max(stars[k]||0,starsC[k]||0);store.set("part",partI);mapView=null}
+function setPart(k){k=PARTS[k]&&!PARTS[k].hidden?k:1;while(kidKey&&k>1&&!worldOpen(k))k--;partI=k;LEVELS=PARTS[partI].levels;stars=store.get(pk("stars"),{});starsC=store.get(pk("starsC"),{});bosses=store.get(pk("bosses"),{});for(const k in starsC)stars[k]=Math.max(stars[k]||0,starsC[k]||0);store.set("part",partI);mapView=null}
 const ZONE=3,zoned=()=>PARTS[partI].zones,zoneOf=i=>Math.floor(i/ZONE),zoneCount=()=>Math.ceil(LEVELS.length/ZONE);
 const zoneStages=z=>LEVELS.map((_,i)=>i).filter(i=>zoneOf(i)===z);
 const best=i=>Math.max(stars[i]||0,starsC[i]||0);
@@ -862,7 +862,7 @@ function home(){
   </div>
   ${dailyDay!==today()&&learned().length+bag.length>=3?`<button class="btn gold dailybtn" id="toDaily">🎁 오늘의 복습 3문제</button>`:""}
   ${nx?`<p style="text-align:center;color:var(--soft)">다음 선물: ${esc(nx.name)} (달란트 ${nx.price}개)</p>`:""}
-  <div class="parts">${PARTS.map((P,k)=>`<button class="part ${k===partI?"on":""}" data-p="${k}">${worldOpen(k)?"":"🔒 "}${esc(P.name)}</button>`).join("")}</div>
+  <div class="parts">${PARTS.map((P,k)=>P.hidden?"":`<button class="part ${k===partI?"on":""}" data-p="${k}">${worldOpen(k)?"":"🔒 "}${esc(P.name)}</button>`).join("")}</div>
   ${(()=>{/* 단계 지도: 한 단계씩 크게, ◀ ▶ 화살표·밀기로 옆 단계(2026-11-12 룡) */
     if(mapView==null){let last=0;LEVELS.forEach((_,i)=>{if(isOpen(i))last=i});mapView=next>=0&&isOpen(next)?next:last}
     const i=mapView,L=LEVELS[i],op=isOpen(i),st=S()[i]||0;
@@ -1163,11 +1163,12 @@ function recall(it){
 function logTime(li){if(!play||play.retry||play.exam)return;const t=store.get("times",[]);t.push({p:partI,li,sec:Math.round((Date.now()-play.t0)/1000),day:today()});store.set("times",t.slice(-40))}
 function avgMin(){const t=store.get("times",[]).slice(-10);return t.length?(t.reduce((a,b)=>a+b.sec,0)/t.length/60).toFixed(1):null}
 /* 월드 시험 안내 줄: 10단계를 다 깨면 열림, 통과하면 다음 월드 */
-function examLine(){const P=PARTS[partI],ex=examOf(partI),done=LEVELS.filter((_,i)=>(S()[i]||0)>0).length,op=isAdm()||openAll||done===LEVELS.length;
+const rescueOf=k=>PARTS[k]&&PARTS[k].world&&LEVELS0[PARTS[k].world-1]?PARTS[k].world-1:-1;
+function examLine(){const P=PARTS[partI],hr=rescueOf(partI),who=hr>=0?LEVELS0[hr].hero:"",ex=examOf(partI),done=LEVELS.filter((_,i)=>(S()[i]||0)>0).length,op=isAdm()||openAll||done===LEVELS.length;
   const nx=PARTS[partI+1]&&PARTS[partI+1].world?` ${PARTS[partI+1].world}월드가 열렸어요!`:"";
   return ex?`🎓 ${P.world}월드 클리어! 시험 ${ex.best}/${EXAM_N}개${nx} <button class="btn ghost sm" id="toExam">시험 다시 보기</button>`
-   :op?`📝 ${P.world}월드 시험이 열렸어요! ${EXAM_N}문제 중 ${EXAM_PASS}개를 맞히면 통과 <button class="btn sm" id="toExam">시험 보기</button>`
-   :`🔒 10단계를 모두 깨면 ${P.world}월드 시험이 열려요 (지금 ${done}/${LEVELS.length}단계)`}
+   :op?`📝 ${P.world}월드 시험이 열렸어요! ${EXAM_N}문제 중 ${EXAM_PASS}개를 맞히면 통과${who?` · ${who} 구출!`:""} <button class="btn sm" id="toExam">시험 보기</button>`
+   :`🔒 10단계를 모두 깨면 ${P.world}월드 시험이 열려요${who?` (통과하면 ${who} 구출)`:""} (지금 ${done}/${LEVELS.length}단계)`}
 /* 시험 문제 고르기: 단계마다 2문제(모자라면 남는 문제로 채움), 섞어서 20문제 */
 function startExam(){
   stopTimer();mapView=null;const P=PARTS[partI];
@@ -1183,19 +1184,21 @@ function startExam(){
     <h1 style="font-size:30px;color:var(--olive-dark)">${esc(P.name)} 졸업 시험</h1>
     <dl class="rules"><dt>문제</dt><dd>${EXAM_N}문제 (1~10단계에서 골고루)</dd><dt>통과</dt><dd>${EXAM_PASS}개 이상 맞히기</dd>
       <dt>기회</dt><dd class="new">문제마다 한 번! 틀리면 바로 정답을 알려 줘요</dd><dt>힌트</dt><dd>없음</dd></dl></div>
-  <div class="scene"><span class="bob">${DAVID(66,wear)}</span><div class="bubble"><b class="who">다윗</b><br>${esc(call())}, ${P.world}월드에서 배운 걸 다 보여 줄 시간이야! 통과하면 다음 월드로 갈 수 있어.</div></div>
+  <div class="scene"><span class="bob">${DAVID(66,wear)}</span><div class="bubble"><b class="who">다윗</b><br>${esc(call())}, ${P.world}월드에서 배운 걸 다 보여 줄 시간이야! 통과하면 ${(r=>r>=0?esc(j(LEVELS0[r].hero,"을","를"))+" 구출하고 ":"")(rescueOf(partI))}다음 월드로 갈 수 있어.</div></div>
   <button class="btn" id="go" style="align-self:center">시험 시작!</button>`;
   bindHud(home);on("go",()=>{sfx("good");step()});
 }
 function examResult(){
   const P=PARTS[partI],k=play.perfect,pass=k>=EXAM_PASS,old=examOf(partI),first=pass&&!old;
   if(pass&&(!old||k>old.best))store.set(P.id+"_exam",{best:k,day:today()});
+  const hr=rescueOf(partI),saved=first&&hr>=0;if(saved&&!cards[hr]){cards[hr]=true;store.set("cards",cards)}
   const nx=PARTS[partI+1]&&PARTS[partI+1].world?partI+1:-1,prize=first?EXAM_PRIZE:0;
   app.innerHTML=`${hud()}
   <div class="result"><div class="chars"><span class="bob">${DAVID(80,wear)}</span>${JONATHAN(70)}</div>
    <span class="ref" style="font-size:17px">${P.world}월드 시험 결과</span>
    <h1 style="font-size:40px;color:${pass?"var(--olive-dark)":"var(--fire)"}">${k} / ${EXAM_N}</h1>
    ${pass?`<span class="combo pop">🎓 통과! ${P.world}월드 클리어!</span>`:`<p style="font-family:var(--display);color:var(--fire);font-size:20px">${EXAM_PASS}개부터 통과예요. ${EXAM_PASS-k}개만 더!</p>`}
+   ${saved?`<p style="font-family:var(--display);color:var(--fire);font-size:22px">🎉 ${esc(j(LEVELS0[hr].hero,"을","를"))} 구출했어요! 인물 카드를 얻었어요</p>${cardHtml(hr)}`:""}
    ${first&&nx>=0?`<div class="panel" style="background:#E3EEF9;text-align:center"><h2 style="color:var(--olive-dark)">${PARTS[nx].world}월드가 열렸어요!</h2><p>${esc(PARTS[nx].name)}</p></div>`:""}
    <div class="tally"><span>맞힌 문제</span><span>${k}/${EXAM_N}</span><span>받은 달란트</span><span>${play.earned}개</span>
      ${prize?`<span>통과 상</span><span>${prize}개</span>`:""}<span class="sum">가진 달란트</span><span class="sum" id="totN">${talents}개</span></div>
@@ -1468,8 +1471,8 @@ function cardHtml(i){const L=LEVELS0[i],c=CARD_COLORS[i%CARD_COLORS.length];
 function cardsScreen(){
   app.innerHTML=`${hud("처음으로")}
   <h1 style="font-size:30px;color:var(--olive-dark)">성경 인물 카드</h1>
-  <p style="color:var(--soft)">단계를 깨면 그 단계 인물 카드를 얻어요. ${Object.keys(cards).length}/${LEVELS0.length}장 모았어요.</p>
-  <div class="hcards">${LEVELS0.map((L,i)=>cards[i]?`<button class="hbtn" data-i="${i}">${cardHtml(i)}</button>`:`<div class="hcard locked"><span class="hn">${i+1}</span><b>?</b><p>${i+1}단계를 깨면 열려요</p></div>`).join("")}</div>`;
+  <p style="color:var(--soft)">월드 시험을 통과하면 인물을 한 명씩 구출해요. ${Object.keys(cards).length}/${LEVELS0.length}장 모았어요.</p>
+  <div class="hcards">${LEVELS0.map((L,i)=>cards[i]?`<button class="hbtn" data-i="${i}">${cardHtml(i)}</button>`:`<div class="hcard locked"><span class="hn">${i+1}</span><b>?</b><p>${i+1}월드 시험을 통과하면 구출</p></div>`).join("")}</div>`;
   bindHud(home);
   app.querySelectorAll(".hbtn").forEach(b=>b.onclick=()=>{sfx("tap");});
 }
