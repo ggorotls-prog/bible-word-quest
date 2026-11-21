@@ -152,6 +152,9 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .board{display:grid;grid-template-columns:repeat(3,26px);gap:8px;padding:12px;background:#E9C77D;border-radius:10px;border:3px solid #B98A3A;min-height:60px}
 .board .bk{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#666,#111);transition:transform .45s,opacity .45s}
 .board .bk.gone{transform:translate(60px,-40px) rotate(90deg);opacity:0}
+.board.mine{grid-template-columns:repeat(3,22px);gap:6px;padding:6px 8px;min-height:0;font-size:0}
+.board .wk{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#cfcfcf);box-shadow:0 1px 2px #0005;transition:transform .5s,opacity .5s}
+.board .wk.gone{transform:translate(-70px,-50px) rotate(-120deg);opacity:0}
 .stage .arr{flex:none;width:48px;height:64px;border-radius:16px;background:var(--scroll);box-shadow:0 4px 0 var(--line);font-size:24px;color:var(--olive-dark)}
 .stage .arr[disabled]{opacity:.3}
 .lv.big{flex:1;align-items:center;text-align:center;gap:6px;padding:20px 14px;min-height:230px;justify-content:center}
@@ -308,6 +311,8 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 /* ================= 낱말 사전 [뜻, 예문] =================
    '손:몸'처럼 쌍점이 있는 것은 여러 뜻 낱말의 한 가지 뜻 */
 const DICT={
+ "엉금엉금":["큰 동작으로 느리게 걷거나 기는 모양.","거북이가 엉금엉금 기어간다."],
+ "주섬주섬":["여기저기 널려 있는 물건을 하나하나 주워 거두는 모양.","장난감을 주섬주섬 주워 담다."],
  "심다":["식물의 뿌리나 씨앗을 흙 속에 묻다.","화분에 꽃씨를 심다."],
  "씻다":["물로 더러운 것을 없애 깨끗하게 하다.","밥 먹기 전에 손을 씻다."],
  "싣다":["물건을 차나 배, 동물 등에 올려놓다.","트럭에 이삿짐을 싣다."],
@@ -1434,7 +1439,8 @@ function bossFight(id){
   stopTimer();const C=bossCfg(id);mapView=C.back;
   if(C.pool.length<2){toast("이 구역 낱말이 모자라요");return}
   const B={hp:C.hp,hearts:3,n:0,over:false,bought:0},alk=C.theme==="alk";
-  const hh=()=>`<span class="hearts" id="bHearts">${Array.from({length:3},(_,k)=>`<span class="${k<B.hearts?"":"lost"}">${alk?"⚪":"♥"}</span>`).join("")}</span>`;
+  const hh=()=>alk?`<div class="board mine hearts" id="bHearts">${Array.from({length:3},(_,k)=>`<i class="wk ${k<B.hearts?"":"gone"}"></i>`).join("")}</div>`
+    :`<span class="hearts" id="bHearts">${Array.from({length:3},(_,k)=>`<span class="${k<B.hearts?"":"lost"}">♥</span>`).join("")}</span>`;
   /* 달란트로 하트 사기(2026-11-16 룡): 하트가 3개보다 적을 때만, 한 보스전에 HEART_BUYS번까지 */
   const buyBtn=()=>B.hearts<3&&B.bought<HEART_BUYS&&!B.over?`<button class="btn gold sm" id="buyHeart" ${talents<HEART_COST?"disabled":""}>${COIN(20)} 달란트 ${HEART_COST}개로 하트 1개${talents<HEART_COST?" (모자라요)":""}</button>`:"";
   const foe=()=>alk?`<div class="board" id="gol">${Array.from({length:C.hp},(_,k)=>`<i class="bk ${k<B.hp?"":"gone"}"></i>`).join("")}</div>`:`<span id="gol">${GOLIATH(104)}</span>`;
@@ -1465,7 +1471,7 @@ function bossFight(id){
           if(B.hp<=0){B.over=true;setTimeout(()=>bossWin(id),700)}else setTimeout(()=>{B.n++;render()},900)},450)}
       else{bagAdd(w);B.hearts--;ar.classList.add(alk?"alkhit":"attack");sfx("bad");
         /* 골리앗이 달려와 내리치고(1.1초) 다윗이 맞아 하트 하나가 꺼진다(2026-11-15 룡) */
-        setTimeout(()=>{sfx("bad");const hs=ar.querySelectorAll(".hearts span");if(hs[B.hearts])hs[B.hearts].classList.add("lost");ar.querySelector(".hearts").classList.add("hit")},alk?450:650);
+        setTimeout(()=>{sfx("bad");if(alk){const ws=ar.querySelectorAll(".wk:not(.gone)");if(ws.length)ws[ws.length-1].classList.add("gone")}else{const hs=ar.querySelectorAll(".hearts span");if(hs[B.hearts])hs[B.hearts].classList.add("lost")}ar.querySelector(".hearts").classList.add("hit")},alk?450:650);
         document.getElementById("fb").innerHTML=`<div class="panel bad"><h2>${alk?"검은 돌에 맞아 내 흰 돌이 튕겨 나갔어요!":"골리앗의 공격! 다윗이 맞았어요"} 정답은 「${esc(NAME(w))}」</h2><p>${esc(M(w))}</p></div>`;
         if(B.hearts<=0){B.over=true;setTimeout(()=>bossLose(id),2200)}else setTimeout(()=>{B.n++;render()},2400)}
     });
@@ -1509,8 +1515,9 @@ function achieve(){
   bindHud(home);
   app.querySelectorAll("[data-b]").forEach(b=>b.onclick=()=>{sfx("tap");const v=b.dataset.b;bossFight(v.startsWith("z")?v:+v)});
 }
+const NEW_W=["새우다","엉금엉금","주섬주섬"]; /* 2월드에 새로 넣은 문제의 낱말: 다 익힐 때까지 복습에 먼저(2026-11-21 룡) */
 function daily(){
-  const pick=[...new Set([...shuffle(bag),...shuffle(learned()).sort((a,b)=>(mastery[a]||0)-(mastery[b]||0))])].filter(w=>DICT[w]).slice(0,3);
+  const pick=[...new Set([...NEW_W.filter(w=>(mastery[w]||0)<3),...shuffle(bag),...shuffle(learned()).sort((a,b)=>(mastery[a]||0)-(mastery[b]||0))])].filter(w=>DICT[w]).slice(0,3);
   let n=0,right=0;
   const render=()=>{const w=pick[n];
     app.innerHTML=`${hud("처음으로")}
