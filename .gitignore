@@ -1,0 +1,16 @@
+android/.gradle
+android/build
+android/app/build
+android/local.properties
+android/app/src/main/assets/game.html
+*.p12
+*.pw
+# 비밀 파일 (2026-11-19 보안 점검)
+.env
+.env.*
+*.jks
+*.keystore
+
+# 공개 저장소에 올리지 않음 (2026-11-22: 참고 교재 사진, Claude 설정)
+참고자료/
+.claude/
