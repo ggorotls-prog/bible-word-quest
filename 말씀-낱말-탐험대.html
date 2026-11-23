@@ -210,6 +210,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .bubble{position:relative;background:var(--scroll);border-radius:18px;padding:12px 14px;line-height:1.6;flex:1;min-width:0;box-shadow:0 3px 0 var(--line)}
 .bubble b.who{font-family:var(--display);font-weight:400;color:var(--sky)}
 .bubble::before{content:"";position:absolute;left:-8px;bottom:16px;border:8px solid transparent;border-right-color:var(--scroll);border-left:0}
+.bubble.notail::before{display:none} /* 문제 카드 안 지문 상자(월드보스전)는 꼬리 없음 */
 .say{float:right;margin:0 0 4px 8px;background:#EFE4CB;border-radius:10px;padding:3px 9px;font-family:var(--display);font-size:14px;color:var(--olive-dark)}
 .ref{display:inline-block;font-family:var(--display);font-size:14px;color:#fff;background:var(--sky);border-radius:8px;padding:2px 8px}
 
@@ -1064,7 +1065,7 @@ function question(it){
   <div class="card">
     <div class="qhead"><span class="qno">${play.retry?"다시 도전":it.fix?"고치기 문제":"문제"}</span>${play.combo>=2?`<span class="combo">${play.combo}연속!</span>`:""}
       <span class="sp"></span></div>
-    ${play.exam&&rescueR()&&q.story?`<div class="bubble" style="margin:0 0 10px">${q.who?`<b class="who">${esc(q.who)} 이야기</b> <span class="ref">${esc(q.ref||"")}</span><br>`:""}${esc(q.story).replace(/\n/g,"<br>")}</div>`:""}
+    ${play.exam&&rescueR()&&q.story?`<div class="bubble notail" style="margin:0 0 10px">${q.who?`<b class="who">${esc(q.who)} 이야기</b> <span class="ref">${esc(q.ref||"")}</span><br>`:""}${esc(q.story).replace(/\n/g,"<br>")}</div>`:""}
     ${body}
     ${D.hint!==0&&q.w?`<button class="hintbtn" id="hintBtn">힌트 보기${D.hint==="free"?"":` (달란트 ${D.hint}개)`}</button><div id="hint"></div>`:""}
   </div><div id="fb"></div>`;
